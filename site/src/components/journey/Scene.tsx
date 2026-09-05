@@ -105,12 +105,82 @@ function LightBeam({
   );
 }
 
+/** One desk + chair pair: tabletop on four legs, a seat and backrest behind it. */
+function Desk({ position }: { position: THREE.Vector3Tuple }) {
+  const woodMat = (
+    <meshStandardMaterial color="#241c14" emissive={PALETTE.primary} emissiveIntensity={0.12} roughness={0.45} />
+  );
+  const legPositions: THREE.Vector3Tuple[] = [
+    [-0.55, 0, -0.32],
+    [0.55, 0, -0.32],
+    [-0.55, 0, 0.32],
+    [0.55, 0, 0.32],
+  ];
+  return (
+    <group position={position}>
+      {/* Tabletop */}
+      <mesh position={[0, 0.75, 0]} castShadow>
+        <boxGeometry args={[1.3, 0.06, 0.75]} />
+        {woodMat}
+      </mesh>
+      {legPositions.map((lp, i) => (
+        <mesh key={i} position={[lp[0], 0.37, lp[2]]}>
+          <cylinderGeometry args={[0.03, 0.03, 0.74, 8]} />
+          <meshStandardMaterial color="#15100b" metalness={0.5} roughness={0.4} />
+        </mesh>
+      ))}
+      {/* Chair, offset behind the desk */}
+      <mesh position={[0, 0.42, 0.62]} castShadow>
+        <boxGeometry args={[0.55, 0.06, 0.5]} />
+        {woodMat}
+      </mesh>
+      <mesh position={[0, 0.75, 0.85]} castShadow>
+        <boxGeometry args={[0.55, 0.65, 0.06]} />
+        {woodMat}
+      </mesh>
+      <mesh position={[-0.24, 0.2, 0.6]}>
+        <cylinderGeometry args={[0.025, 0.025, 0.4, 6]} />
+        <meshStandardMaterial color="#15100b" metalness={0.5} roughness={0.4} />
+      </mesh>
+      <mesh position={[0.24, 0.2, 0.6]}>
+        <cylinderGeometry args={[0.025, 0.025, 0.4, 6]} />
+        <meshStandardMaterial color="#15100b" metalness={0.5} roughness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+/** A tall window strip on the side wall, glowing like late-afternoon light through glass. */
+function Window({ position }: { position: THREE.Vector3Tuple }) {
+  return (
+    <group position={position}>
+      <mesh>
+        <planeGeometry args={[1.4, 3.2]} />
+        <meshStandardMaterial
+          color={PALETTE.accent}
+          emissive={PALETTE.accent}
+          emissiveIntensity={0.6}
+          transparent
+          opacity={0.35}
+        />
+      </mesh>
+      {[-0.46, 0, 0.46].map((x, i) => (
+        <mesh key={i} position={[x, 0, 0.02]}>
+          <boxGeometry args={[0.04, 3.2, 0.04]} />
+          <meshStandardMaterial color="#0d0a07" />
+        </mesh>
+      ))}
+      <pointLight position={[0.4, 0, 1.5]} intensity={6} color={PALETTE.accent} />
+    </group>
+  );
+}
+
 function ClassroomScene() {
   const desks = useMemo(
     () =>
-      Array.from({ length: 9 }, (_, i) => ({
-        x: (i % 3) * 3 - 3,
-        z: Math.floor(i / 3) * 3 - 3,
+      Array.from({ length: 6 }, (_, i) => ({
+        x: (i % 2) * 2.6 - 1.3,
+        z: Math.floor(i / 2) * 2.2 - 1.5,
       })),
     [],
   );
@@ -136,17 +206,40 @@ function ClassroomScene() {
         <planeGeometry args={[7, 0.06]} />
         <meshStandardMaterial color={PALETTE.accent} emissive={PALETTE.accent} emissiveIntensity={1.2} />
       </mesh>
-      {desks.map((d, i) => (
-        <mesh key={i} position={[d.x, 0.4, d.z]} castShadow>
-          <boxGeometry args={[1.4, 0.8, 0.9]} />
-          <meshStandardMaterial
-            color="#241c14"
-            emissive={PALETTE.primary}
-            emissiveIntensity={0.12}
-            roughness={0.4}
-          />
+      {/* Chalk molecule sketch on the board — a small nod to the subject matter */}
+      <mesh position={[-2.6, 4, -5.93]}>
+        <ringGeometry args={[0.28, 0.32, 24]} />
+        <meshBasicMaterial color={PALETTE.accent} transparent opacity={0.5} />
+      </mesh>
+      <mesh position={[-1.9, 3.7, -5.93]}>
+        <ringGeometry args={[0.18, 0.21, 24]} />
+        <meshBasicMaterial color={PALETTE.accent} transparent opacity={0.4} />
+      </mesh>
+
+      {/* Teacher's desk, larger, facing the class */}
+      <group position={[0, 0, -4]}>
+        <mesh position={[0, 0.5, 0]} castShadow>
+          <boxGeometry args={[2.2, 0.08, 0.9]} />
+          <meshStandardMaterial color="#1c150f" emissive={PALETTE.primary} emissiveIntensity={0.1} roughness={0.4} />
         </mesh>
+        <mesh position={[-0.95, 0.25, 0]}>
+          <boxGeometry args={[0.08, 0.5, 0.85]} />
+          <meshStandardMaterial color="#120d09" />
+        </mesh>
+        <mesh position={[0.95, 0.25, 0]}>
+          <boxGeometry args={[0.08, 0.5, 0.85]} />
+          <meshStandardMaterial color="#120d09" />
+        </mesh>
+      </group>
+
+      {desks.map((d, i) => (
+        <Desk key={i} position={[d.x, 0, d.z]} />
       ))}
+
+      {/* Windows down the left wall */}
+      <Window position={[-6.9, 2.8, -3]} />
+      <Window position={[-6.9, 2.8, 0]} />
+
       <LightBeam position={[0, 9, 1]} rotation={[Math.PI, 0, 0]} length={11} radius={2.6} opacity={0.14} />
       <pointLight position={[0, 4, 2]} intensity={22} color={PALETTE.accent} />
       <pointLight position={[0, 3, -6]} intensity={14} color={PALETTE.secondary} />
