@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Force | Select-Object Name, Mode | Format-Table -AutoSize; Write-Host \"---docker---\"; \\(Get-Command docker -ErrorAction SilentlyContinue\\).Source; Write-Host \"---claude---\"; \\(Get-Command claude -ErrorAction SilentlyContinue\\).Source)",
+      "PowerShell(Write-Host \"---go---\"; \\(Get-Command go -ErrorAction SilentlyContinue\\).Source; Write-Host \"---npx---\"; \\(Get-Command npx -ErrorAction SilentlyContinue\\).Source; Write-Host \"---git---\"; \\(Get-Command git -ErrorAction SilentlyContinue\\).Source)"
+    ]
+  }
+}
