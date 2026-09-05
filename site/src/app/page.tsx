@@ -1,5 +1,6 @@
 import ScrollProgress from "@/components/ScrollProgress";
 import JourneyScroll from "@/components/journey/JourneyScroll";
+import JourneyNav from "@/components/journey/JourneyNav";
 import ChapterOverlay from "@/components/journey/ChapterOverlay";
 import {
   HeroContent,
@@ -14,6 +15,7 @@ export default function Home() {
   return (
     <>
       <ScrollProgress />
+      <JourneyNav />
       <JourneyScroll>
         <ChapterOverlay range={CHAPTERS.hero}>
           <HeroContent />
