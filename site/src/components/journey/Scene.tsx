@@ -155,6 +155,82 @@ function ClassroomScene() {
   );
 }
 
+/** Procedural bloom: two rings of curved petal shapes around a beaded stamen center.
+ * Stands in for a literal flower model — the raw material that goes into the flask. */
+function Flower({ position = [0, 0, 0] as THREE.Vector3Tuple, scale = 1 }) {
+  const groupRef = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    if (groupRef.current && !prefersReducedMotion) {
+      groupRef.current.rotation.y = state.clock.elapsedTime * 0.15;
+    }
+  });
+
+  const petalGeometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.bezierCurveTo(0.32, 0.25, 0.42, 0.9, 0, 1.3);
+    shape.bezierCurveTo(-0.42, 0.9, -0.32, 0.25, 0, 0);
+    return new THREE.ShapeGeometry(shape, 12);
+  }, []);
+
+  const rings = useMemo(
+    () => [
+      { count: 6, radiusTilt: 1.15, y: 0.05, scale: 1, color: PALETTE.secondary },
+      { count: 5, radiusTilt: 0.65, y: 0.18, scale: 0.65, color: "#9c4a56" },
+    ],
+    [],
+  );
+
+  const stamens = useMemo(
+    () =>
+      Array.from({ length: 14 }, (_, i) => {
+        const a = (i / 14) * Math.PI * 2;
+        const r = 0.08 + Math.random() * 0.1;
+        return [Math.cos(a) * r, 0.28 + Math.random() * 0.08, Math.sin(a) * r] as THREE.Vector3Tuple;
+      }),
+    [],
+  );
+
+  return (
+    <group ref={groupRef} position={position} scale={scale}>
+      {rings.map((ring, ringIdx) =>
+        Array.from({ length: ring.count }, (_, i) => {
+          const angle = (i / ring.count) * Math.PI * 2 + (ringIdx * Math.PI) / ring.count;
+          return (
+            <mesh
+              key={`${ringIdx}-${i}`}
+              geometry={petalGeometry}
+              position={[0, ring.y, 0]}
+              rotation={[ring.radiusTilt, angle, 0]}
+              scale={ring.scale}
+            >
+              <meshPhysicalMaterial
+                color={ring.color}
+                side={THREE.DoubleSide}
+                roughness={0.35}
+                transmission={0.25}
+                thickness={0.3}
+                emissive={ring.color}
+                emissiveIntensity={0.08}
+              />
+            </mesh>
+          );
+        }),
+      )}
+      <mesh position={[0, 0.24, 0]}>
+        <sphereGeometry args={[0.14, 16, 16]} />
+        <meshStandardMaterial color={PALETTE.accent} emissive={PALETTE.accent} emissiveIntensity={0.3} roughness={0.4} />
+      </mesh>
+      {stamens.map((pos, i) => (
+        <mesh key={i} position={pos}>
+          <sphereGeometry args={[0.035, 8, 8]} />
+          <meshStandardMaterial color={PALETTE.primary} emissive={PALETTE.primary} emissiveIntensity={0.5} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 function LabScene() {
   const flaskRef = useRef<THREE.Mesh>(null);
   useFrame((state) => {
@@ -210,10 +286,14 @@ function LabScene() {
         <pointsMaterial size={0.05} color="#f2ece2" transparent opacity={0.25} />
       </points>
 
+      {/* Raw material floating beside the flask — kept on the right, clear of the left-aligned text card */}
+      <Flower position={[2.6, 1.2, 1.4]} scale={0.85} />
+
       {/* Dramatic diagonal shaft, echoing the perfume-bottle reference */}
       <LightBeam position={[2.2, 5, -1]} rotation={[0, 0, 0.5]} length={9} radius={1.6} opacity={0.18} />
       <pointLight position={[0, 1.5, 2.5]} intensity={20} color={PALETTE.accent} />
       <pointLight position={[2, 3, 2]} intensity={10} color={PALETTE.secondary} />
+      <pointLight position={[2.6, 2, 1.4]} intensity={10} color={PALETTE.primary} />
     </group>
   );
 }
