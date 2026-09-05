@@ -1,13 +1,13 @@
-$ErrorActionPreference = 'Stop'
 $repoPath = "C:\Users\User\projectschool"
-Set-Location $repoPath
-
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-
 $logFile = Join-Path $repoPath ".claude\scripts\git-backup.log"
 $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
 
+Add-Content -Path $logFile -Value "$timestamp - task started"
+
 try {
+    Set-Location $repoPath
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
     git add -A
     $changes = git status --porcelain
     if ($changes) {
