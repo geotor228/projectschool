@@ -20,6 +20,12 @@ const PALETTE = {
   fog: "#0b0908",
 };
 
+/** Camera z/x/y is driven by scroll progress, not the clock, so it stays fine under
+ * reduced-motion (it's user-controlled, not autoplaying). Only the free-running clock-driven
+ * spins (starfield, flask, molecule) get frozen here — those are the actual autoplay motion. */
+const prefersReducedMotion =
+  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 function CameraRig() {
   const target = useMemo(() => new THREE.Vector3(), []);
   useFrame((state) => {
@@ -53,7 +59,7 @@ function Starfield() {
 
   const ref = useRef<THREE.Points>(null);
   useFrame((_, delta) => {
-    if (ref.current) ref.current.rotation.y += delta * 0.01;
+    if (ref.current && !prefersReducedMotion) ref.current.rotation.y += delta * 0.01;
   });
 
   return (
@@ -151,7 +157,7 @@ function ClassroomScene() {
 function LabScene() {
   const flaskRef = useRef<THREE.Mesh>(null);
   useFrame((state) => {
-    if (flaskRef.current) {
+    if (flaskRef.current && !prefersReducedMotion) {
       flaskRef.current.rotation.y = state.clock.elapsedTime * 0.3;
     }
   });
@@ -235,7 +241,7 @@ function Bond({ to }: { to: THREE.Vector3Tuple }) {
 function MoleculeScene() {
   const groupRef = useRef<THREE.Group>(null);
   useFrame((state) => {
-    if (groupRef.current) groupRef.current.rotation.y = state.clock.elapsedTime * 0.25;
+    if (groupRef.current && !prefersReducedMotion) groupRef.current.rotation.y = state.clock.elapsedTime * 0.25;
   });
 
   const atoms = useMemo(
