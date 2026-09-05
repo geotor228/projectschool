@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { Unbounded, Roboto_Mono } from "next/font/google";
+import { Cormorant, Montserrat } from "next/font/google";
 import "./globals.css";
 
-const exo = Unbounded({
-  variable: "--font-exo",
+const cormorant = Cormorant({
+  variable: "--font-display",
   subsets: ["latin", "latin-ext", "cyrillic"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const robotoMono = Roboto_Mono({
-  variable: "--font-roboto-mono",
+const montserrat = Montserrat({
+  variable: "--font-body",
   subsets: ["latin", "cyrillic"],
-  weight: ["300", "400", "500", "700"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ru" className={`${exo.variable} ${robotoMono.variable} h-full`}>
+    <html lang="ru" className={`${cormorant.variable} ${montserrat.variable} h-full`}>
       <body className="min-h-full antialiased">{children}</body>
     </html>
   );

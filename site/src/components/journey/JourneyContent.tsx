@@ -1,5 +1,5 @@
 const card =
-  "rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur-md sm:p-8";
+  "rounded-2xl border border-[var(--color-border)]/60 bg-[var(--color-card)]/70 p-6 backdrop-blur-md sm:p-8";
 
 export function HeroContent() {
   return (

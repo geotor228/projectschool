@@ -14,10 +14,10 @@ const STATIONS = {
 };
 
 const PALETTE = {
-  primary: "#15803d",
-  secondary: "#22c55e",
-  accent: "#d97706",
-  fog: "#0b1a10",
+  primary: "#c9a24b",
+  secondary: "#7a2e3a",
+  accent: "#d4af37",
+  fog: "#0b0908",
 };
 
 function CameraRig() {
@@ -41,7 +41,7 @@ function CameraRig() {
 
 function Starfield() {
   const positions = useMemo(() => {
-    const count = 600;
+    const count = 500;
     const arr = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       arr[i * 3] = (Math.random() - 0.5) * 60;
@@ -61,8 +61,40 @@ function Starfield() {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial size={0.06} color={PALETTE.secondary} transparent opacity={0.5} />
+      <pointsMaterial size={0.05} color={PALETTE.primary} transparent opacity={0.35} />
     </points>
+  );
+}
+
+/** A single dramatic volumetric-looking light shaft, like a spotlight cutting through dust —
+ * the "NOIR ÉTERNEL" perfume-ad look. Pure additive-blended geometry, no post-processing needed. */
+function LightBeam({
+  position,
+  rotation = [0, 0, 0],
+  length = 14,
+  radius = 2.2,
+  color = PALETTE.accent,
+  opacity = 0.16,
+}: {
+  position: THREE.Vector3Tuple;
+  rotation?: [number, number, number];
+  length?: number;
+  radius?: number;
+  color?: string;
+  opacity?: number;
+}) {
+  return (
+    <mesh position={position} rotation={rotation}>
+      <coneGeometry args={[radius, length, 24, 1, true]} />
+      <meshBasicMaterial
+        color={color}
+        transparent
+        opacity={opacity}
+        side={THREE.DoubleSide}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </mesh>
   );
 }
 
@@ -81,36 +113,37 @@ function ClassroomScene() {
       {/* Floor */}
       <mesh position={[0, -0.02, -2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[14, 12]} />
-        <meshStandardMaterial color="#0a1a10" roughness={1} />
+        <meshStandardMaterial color="#0f0c09" roughness={1} />
       </mesh>
       {/* Blackboard, glowing like a projected slide */}
       <mesh position={[0, 3.2, -6]} receiveShadow>
         <planeGeometry args={[10, 5]} />
         <meshStandardMaterial
-          color="#0f2417"
-          emissive={PALETTE.secondary}
-          emissiveIntensity={0.12}
+          color="#1a140f"
+          emissive={PALETTE.primary}
+          emissiveIntensity={0.1}
           roughness={0.6}
         />
       </mesh>
       <mesh position={[0, 3.2, -5.94]}>
         <planeGeometry args={[7, 0.06]} />
-        <meshStandardMaterial color={PALETTE.secondary} emissive={PALETTE.secondary} emissiveIntensity={1.2} />
+        <meshStandardMaterial color={PALETTE.accent} emissive={PALETTE.accent} emissiveIntensity={1.2} />
       </mesh>
       {desks.map((d, i) => (
         <mesh key={i} position={[d.x, 0.4, d.z]} castShadow>
           <boxGeometry args={[1.4, 0.8, 0.9]} />
           <meshStandardMaterial
-            color={PALETTE.primary}
+            color="#241c14"
             emissive={PALETTE.primary}
-            emissiveIntensity={0.25}
+            emissiveIntensity={0.12}
             roughness={0.4}
           />
         </mesh>
       ))}
-      <pointLight position={[0, 4, 2]} intensity={30} color={PALETTE.accent} />
-      <pointLight position={[0, 3, -6]} intensity={20} color={PALETTE.secondary} />
-      <spotLight position={[0, 8, 4]} intensity={25} angle={0.6} penumbra={0.6} color="#ffffff" />
+      <LightBeam position={[0, 9, 1]} rotation={[Math.PI, 0, 0]} length={11} radius={2.6} opacity={0.14} />
+      <pointLight position={[0, 4, 2]} intensity={22} color={PALETTE.accent} />
+      <pointLight position={[0, 3, -6]} intensity={14} color={PALETTE.secondary} />
+      <spotLight position={[0, 8, 4]} intensity={20} angle={0.5} penumbra={0.7} color="#fff4dd" />
     </group>
   );
 }
@@ -136,13 +169,18 @@ function LabScene() {
 
   return (
     <group position={[0, -1, STATIONS.lab]}>
+      {/* Podium the flask sits on, perfume-ad style */}
+      <mesh position={[0, -0.55, 0]}>
+        <cylinderGeometry args={[1.6, 1.8, 0.5, 48]} />
+        <meshStandardMaterial color="#15100b" roughness={0.5} metalness={0.3} />
+      </mesh>
       {/* Flask */}
       <mesh ref={flaskRef} position={[0, 0.6, 0]} castShadow>
         <sphereGeometry args={[1, 32, 32]} />
         <meshPhysicalMaterial
           color={PALETTE.secondary}
           transmission={0.85}
-          roughness={0.1}
+          roughness={0.08}
           thickness={0.6}
           ior={1.4}
         />
@@ -150,22 +188,25 @@ function LabScene() {
       {/* Condenser */}
       <mesh position={[0, 2.6, 0]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.18, 0.18, 2.4, 16]} />
-        <meshPhysicalMaterial color="#a7f3d0" transmission={0.7} roughness={0.15} />
+        <meshPhysicalMaterial color="#e8d9b5" transmission={0.7} roughness={0.15} />
       </mesh>
       {/* Ring stand */}
       <mesh position={[0, 0.6, 0]}>
         <torusGeometry args={[1.3, 0.03, 8, 32]} />
-        <meshStandardMaterial color={PALETTE.accent} metalness={0.6} roughness={0.3} />
+        <meshStandardMaterial color={PALETTE.accent} metalness={0.7} roughness={0.25} />
       </mesh>
 
       <points position={[0, 1.5, 0]}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[steam, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.05} color="#ffffff" transparent opacity={0.3} />
+        <pointsMaterial size={0.05} color="#f2ece2" transparent opacity={0.25} />
       </points>
 
-      <pointLight position={[2, 3, 2]} intensity={15} color={PALETTE.secondary} />
+      {/* Dramatic diagonal shaft, echoing the perfume-bottle reference */}
+      <LightBeam position={[2.2, 5, -1]} rotation={[0, 0, 0.5]} length={9} radius={1.6} opacity={0.18} />
+      <pointLight position={[0, 1.5, 2.5]} intensity={20} color={PALETTE.accent} />
+      <pointLight position={[2, 3, 2]} intensity={10} color={PALETTE.secondary} />
     </group>
   );
 }
@@ -186,7 +227,7 @@ function Bond({ to }: { to: THREE.Vector3Tuple }) {
   return (
     <mesh position={position} quaternion={quaternion}>
       <cylinderGeometry args={[0.09, 0.09, length, 12]} />
-      <meshStandardMaterial color="#e2e8f0" metalness={0.3} roughness={0.35} />
+      <meshStandardMaterial color="#3a2f26" metalness={0.4} roughness={0.3} />
     </mesh>
   );
 }
@@ -211,32 +252,35 @@ function MoleculeScene() {
   );
 
   return (
-    <group position={[0, 0, STATIONS.molecule]} ref={groupRef}>
-      {atoms.map((pos, i) => (
-        <Bond key={i} to={pos} />
-      ))}
-      <mesh>
-        <sphereGeometry args={[0.75, 32, 32]} />
-        <meshStandardMaterial
-          color={PALETTE.primary}
-          emissive={PALETTE.primary}
-          emissiveIntensity={0.5}
-          roughness={0.3}
-        />
-      </mesh>
-      {atoms.map((pos, i) => (
-        <mesh key={i} position={pos}>
-          <sphereGeometry args={[0.38, 24, 24]} />
+    <group position={[0, 0, STATIONS.molecule]}>
+      <LightBeam position={[0, 6, 0]} rotation={[Math.PI, 0, 0]} length={10} radius={2} opacity={0.2} />
+      <group ref={groupRef}>
+        {atoms.map((pos, i) => (
+          <Bond key={i} to={pos} />
+        ))}
+        <mesh>
+          <sphereGeometry args={[0.75, 32, 32]} />
           <meshStandardMaterial
-            color={PALETTE.accent}
-            emissive={PALETTE.accent}
-            emissiveIntensity={0.4}
-            roughness={0.3}
+            color={PALETTE.secondary}
+            emissive={PALETTE.secondary}
+            emissiveIntensity={0.5}
+            roughness={0.25}
           />
         </mesh>
-      ))}
-      <pointLight position={[0, 0, 4]} intensity={18} color="#ffffff" />
-      <pointLight position={[-3, 2, -2]} intensity={10} color={PALETTE.secondary} />
+        {atoms.map((pos, i) => (
+          <mesh key={i} position={pos}>
+            <sphereGeometry args={[0.38, 24, 24]} />
+            <meshStandardMaterial
+              color={PALETTE.accent}
+              emissive={PALETTE.accent}
+              emissiveIntensity={0.45}
+              roughness={0.25}
+            />
+          </mesh>
+        ))}
+      </group>
+      <pointLight position={[0, 0, 4]} intensity={16} color="#fff4dd" />
+      <pointLight position={[-3, 2, -2]} intensity={9} color={PALETTE.secondary} />
     </group>
   );
 }
@@ -244,10 +288,11 @@ function MoleculeScene() {
 function HorizonScene() {
   return (
     <group position={[0, 0, STATIONS.horizon]}>
-      <pointLight position={[0, 2, -5]} intensity={25} color={PALETTE.secondary} />
+      <LightBeam position={[0, 5, -3]} rotation={[Math.PI, 0, 0]} length={12} radius={2.4} opacity={0.15} />
+      <pointLight position={[0, 2, -5]} intensity={20} color={PALETTE.primary} />
       <mesh>
         <ringGeometry args={[3, 3.05, 64]} />
-        <meshBasicMaterial color={PALETTE.secondary} transparent opacity={0.4} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={PALETTE.accent} transparent opacity={0.45} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
@@ -262,7 +307,7 @@ export default function Scene() {
     >
       <color attach="background" args={[PALETTE.fog]} />
       <fogExp2 attach="fog" args={[PALETTE.fog, 0.045]} />
-      <ambientLight intensity={0.35} />
+      <ambientLight intensity={0.25} />
       <CameraRig />
       <Starfield />
       <ClassroomScene />

@@ -1,20 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --color-primary: #15803d;
-  --color-on-primary: #ffffff;
-  --color-secondary: #22c55e;
-  --color-on-secondary: #0f172a;
-  --color-accent: #d97706;
-  --color-on-accent: #000000;
-  --color-background: #f0fdf4;
-  --color-foreground: #14532d;
-  --color-card: #ffffff;
-  --color-card-foreground: #14532d;
-  --color-muted: #e8f0f1;
-  --color-muted-foreground: #475569;
-  --color-border: #bbf7d0;
-  --color-ring: #15803d;
+  --color-primary: #c9a24b;
+  --color-on-primary: #1c1917;
+  --color-secondary: #7a2e3a;
+  --color-on-secondary: #f5efe6;
+  --color-accent: #d4af37;
+  --color-on-accent: #1c1917;
+  --color-background: #0b0908;
+  --color-foreground: #f2ece2;
+  --color-card: #161210;
+  --color-card-foreground: #f2ece2;
+  --color-muted: #221c18;
+  --color-muted-foreground: #b8ab98;
+  --color-border: #3a2f26;
+  --color-ring: #d4af37;
 }
 
 @theme inline {
@@ -32,19 +32,23 @@
   --color-muted-foreground: var(--color-muted-foreground);
   --color-border: var(--color-border);
   --color-ring: var(--color-ring);
-  --font-display: var(--font-exo);
-  --font-mono: var(--font-roboto-mono);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-body);
 }
 
 body {
   background: var(--color-background);
   color: var(--color-foreground);
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-body), sans-serif;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display), serif;
 }
 
 ::selection {
-  background: var(--color-secondary);
-  color: var(--color-on-secondary);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 @media (prefers-reduced-motion: reduce) {
