@@ -2,6 +2,7 @@
 
 import { useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { Environment } from "@react-three/drei";
 import * as THREE from "three";
 import { journeyState } from "@/lib/journeyState";
 
@@ -314,6 +315,7 @@ export default function Scene() {
       <color attach="background" args={[PALETTE.fog]} />
       <fogExp2 attach="fog" args={[PALETTE.fog, 0.045]} />
       <ambientLight intensity={0.25} />
+      <Environment preset="studio" background={false} environmentIntensity={0.6} />
       <CameraRig />
       <Starfield />
       <ClassroomScene />
