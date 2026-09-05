@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Exo, Roboto_Mono } from "next/font/google";
+import { Unbounded, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 
-const exo = Exo({
+const exo = Unbounded({
   variable: "--font-exo",
   subsets: ["latin", "latin-ext", "cyrillic"],
   weight: ["300", "400", "500", "600", "700"],
