@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment } from "@react-three/drei";
+import { Environment, ContactShadows } from "@react-three/drei";
+import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
+import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
 import { journeyState } from "@/lib/journeyState";
+import { createWoodTexture, createSlateTexture } from "@/lib/proceduralTextures";
 
 const STATIONS = {
   hero: 6,
@@ -13,6 +16,13 @@ const STATIONS = {
   molecule: -54,
   horizon: -76,
 };
+
+/** Deterministic 0-1 pseudo-random value from two integers — a pure stand-in for Math.random()
+ * inside useMemo, where calling an impure function during render trips react-hooks/purity. */
+function seededJitter(a: number, b: number): number {
+  const s = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453;
+  return s - Math.floor(s);
+}
 
 const PALETTE = {
   primary: "#c9a24b",
@@ -44,6 +54,18 @@ function CameraRig() {
     state.camera.lookAt(target);
   });
   return null;
+}
+
+/** Stations sit only 20-22 units apart with nothing occluding between them, so without this a
+ * strongly-lit neighboring scene (e.g. the lab's podium light) shows through the fog at the edge
+ * of frame while you're still in the previous scene. Hide each scene once the camera has moved
+ * past the midpoint to its neighbor — well within fog range, so the cut is never visible. */
+function useStationVisibility(ref: React.RefObject<THREE.Group | null>, stationZ: number, radius = 10.5) {
+  useFrame(() => {
+    if (!ref.current) return;
+    const cameraZ = THREE.MathUtils.lerp(STATIONS.hero, STATIONS.horizon, journeyState.progress);
+    ref.current.visible = Math.abs(cameraZ - stationZ) < radius;
+  });
 }
 
 function Starfield() {
@@ -105,11 +127,20 @@ function LightBeam({
   );
 }
 
-/** One desk + chair pair: tabletop on four legs, a seat and backrest behind it. */
-function Desk({ position }: { position: THREE.Vector3Tuple }) {
-  const woodMat = (
-    <meshStandardMaterial color="#241c14" emissive={PALETTE.primary} emissiveIntensity={0.12} roughness={0.45} />
-  );
+/** One desk + chair pair: tabletop on four legs, a seat and backrest behind it.
+ * Materials are shared instances passed in from ClassroomScene (see the ui-ux-pro-max
+ * threejs guideline on sharing materials instead of allocating one per mesh). */
+function Desk({
+  position,
+  rotationY = 0,
+  woodMat,
+  metalMat,
+}: {
+  position: THREE.Vector3Tuple;
+  rotationY?: number;
+  woodMat: THREE.Material;
+  metalMat: THREE.Material;
+}) {
   const legPositions: THREE.Vector3Tuple[] = [
     [-0.55, 0, -0.32],
     [0.55, 0, -0.32],
@@ -117,34 +148,28 @@ function Desk({ position }: { position: THREE.Vector3Tuple }) {
     [0.55, 0, 0.32],
   ];
   return (
-    <group position={position}>
+    <group position={position} rotation={[0, rotationY, 0]}>
       {/* Tabletop */}
-      <mesh position={[0, 0.75, 0]} castShadow>
+      <mesh position={[0, 0.75, 0]} material={woodMat} castShadow receiveShadow>
         <boxGeometry args={[1.3, 0.06, 0.75]} />
-        {woodMat}
       </mesh>
       {legPositions.map((lp, i) => (
-        <mesh key={i} position={[lp[0], 0.37, lp[2]]}>
+        <mesh key={i} position={[lp[0], 0.37, lp[2]]} material={metalMat}>
           <cylinderGeometry args={[0.03, 0.03, 0.74, 8]} />
-          <meshStandardMaterial color="#15100b" metalness={0.5} roughness={0.4} />
         </mesh>
       ))}
       {/* Chair, offset behind the desk */}
-      <mesh position={[0, 0.42, 0.62]} castShadow>
+      <mesh position={[0, 0.42, 0.62]} material={woodMat} castShadow>
         <boxGeometry args={[0.55, 0.06, 0.5]} />
-        {woodMat}
       </mesh>
-      <mesh position={[0, 0.75, 0.85]} castShadow>
+      <mesh position={[0, 0.75, 0.85]} material={woodMat} castShadow>
         <boxGeometry args={[0.55, 0.65, 0.06]} />
-        {woodMat}
       </mesh>
-      <mesh position={[-0.24, 0.2, 0.6]}>
+      <mesh position={[-0.24, 0.2, 0.6]} material={metalMat}>
         <cylinderGeometry args={[0.025, 0.025, 0.4, 6]} />
-        <meshStandardMaterial color="#15100b" metalness={0.5} roughness={0.4} />
       </mesh>
-      <mesh position={[0.24, 0.2, 0.6]}>
+      <mesh position={[0.24, 0.2, 0.6]} material={metalMat}>
         <cylinderGeometry args={[0.025, 0.025, 0.4, 6]} />
-        <meshStandardMaterial color="#15100b" metalness={0.5} roughness={0.4} />
       </mesh>
     </group>
   );
@@ -176,31 +201,84 @@ function Window({ position }: { position: THREE.Vector3Tuple }) {
 }
 
 function ClassroomScene() {
+  const groupRef = useRef<THREE.Group>(null);
+  useStationVisibility(groupRef, STATIONS.classroom);
+
+  // Shared material + texture instances (created once, reused across every desk/chair mesh)
+  // rather than one meshStandardMaterial per box, per the threejs "share material instances" guideline.
+  const materials = useMemo(() => {
+    const deskWood = createWoodTexture({
+      base: "#241a10",
+      dark: "#120b06",
+      light: "#3c2b18",
+      size: 512,
+      repeat: [1, 1],
+      seed: 3,
+    });
+    const floorWood = createWoodTexture({
+      base: "#160f0a",
+      dark: "#0a0604",
+      light: "#251a10",
+      size: 512,
+      repeat: [5, 4],
+      plankLines: true,
+      seed: 11,
+    });
+    const woodMat = new THREE.MeshStandardMaterial({
+      map: deskWood.map,
+      roughnessMap: deskWood.roughnessMap,
+      roughness: 0.6,
+      envMapIntensity: 0.12,
+      emissive: new THREE.Color(PALETTE.primary),
+      emissiveIntensity: 0.04,
+    });
+    const metalMat = new THREE.MeshStandardMaterial({
+      color: "#1a1410",
+      metalness: 0.6,
+      roughness: 0.55,
+      envMapIntensity: 0.4,
+    });
+    // Floor gets zero environment contribution: a matte wood floor has nothing to gain from HDRI
+    // reflections, and the "studio" preset's bright softbox region was blowing out the near floor
+    // as a hot, view-angle-dependent specular patch under grazing camera angles — not a light bug,
+    // an IBL-on-a-flat-plane bug. Direct scene lights still shade it normally.
+    const floorMat = new THREE.MeshStandardMaterial({
+      map: floorWood.map,
+      roughnessMap: floorWood.roughnessMap,
+      roughness: 1,
+      envMapIntensity: 0,
+    });
+    const slateMat = new THREE.MeshStandardMaterial({ map: createSlateTexture(512), roughness: 0.7 });
+    return { woodMat, metalMat, floorMat, slateMat };
+  }, []);
+
+  // Slight per-desk position/rotation jitter so the row reads as real furniture, not a grid of
+  // clones. Deterministic hash instead of Math.random() — keeps this useMemo a pure function.
   const desks = useMemo(
     () =>
       Array.from({ length: 6 }, (_, i) => ({
-        x: (i % 2) * 2.6 - 1.3,
-        z: Math.floor(i / 2) * 2.2 - 1.5,
+        x: (i % 2) * 2.6 - 1.3 + (seededJitter(i, 1) - 0.5) * 0.12,
+        z: Math.floor(i / 2) * 2.2 - 1.5 + (seededJitter(i, 2) - 0.5) * 0.12,
+        rotationY: (seededJitter(i, 3) - 0.5) * 0.08,
       })),
     [],
   );
 
+  const sunRef = useRef<THREE.SpotLight>(null);
+  const sunTargetRef = useRef<THREE.Object3D>(null);
+  useEffect(() => {
+    if (sunRef.current && sunTargetRef.current) sunRef.current.target = sunTargetRef.current;
+  }, []);
+
   return (
-    <group position={[0, -1.5, STATIONS.classroom]}>
+    <group ref={groupRef} position={[0, -1.5, STATIONS.classroom]}>
       {/* Floor */}
-      <mesh position={[0, -0.02, -2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh position={[0, -0.02, -2]} rotation={[-Math.PI / 2, 0, 0]} material={materials.floorMat} receiveShadow>
         <planeGeometry args={[14, 12]} />
-        <meshStandardMaterial color="#0f0c09" roughness={1} />
       </mesh>
-      {/* Blackboard, glowing like a projected slide */}
-      <mesh position={[0, 3.2, -6]} receiveShadow>
+      {/* Blackboard, real chalk-slate texture instead of a flat fill */}
+      <mesh position={[0, 3.2, -6]} material={materials.slateMat} receiveShadow>
         <planeGeometry args={[10, 5]} />
-        <meshStandardMaterial
-          color="#1a140f"
-          emissive={PALETTE.primary}
-          emissiveIntensity={0.1}
-          roughness={0.6}
-        />
       </mesh>
       <mesh position={[0, 3.2, -5.94]}>
         <planeGeometry args={[7, 0.06]} />
@@ -216,34 +294,60 @@ function ClassroomScene() {
         <meshBasicMaterial color={PALETTE.accent} transparent opacity={0.4} />
       </mesh>
 
-      {/* Teacher's desk, larger, facing the class */}
-      <group position={[0, 0, -4]}>
-        <mesh position={[0, 0.5, 0]} castShadow>
+      {/* Teacher's desk, larger, facing the class — pushed back near the board so the camera's
+       * flight path (which runs straight down the center aisle) never grazes it at close range. */}
+      <group position={[0, 0, -5.5]}>
+        <mesh position={[0, 0.5, 0]} material={materials.woodMat} castShadow receiveShadow>
           <boxGeometry args={[2.2, 0.08, 0.9]} />
-          <meshStandardMaterial color="#1c150f" emissive={PALETTE.primary} emissiveIntensity={0.1} roughness={0.4} />
         </mesh>
-        <mesh position={[-0.95, 0.25, 0]}>
+        <mesh position={[-0.95, 0.25, 0]} material={materials.metalMat}>
           <boxGeometry args={[0.08, 0.5, 0.85]} />
-          <meshStandardMaterial color="#120d09" />
         </mesh>
-        <mesh position={[0.95, 0.25, 0]}>
+        <mesh position={[0.95, 0.25, 0]} material={materials.metalMat}>
           <boxGeometry args={[0.08, 0.5, 0.85]} />
-          <meshStandardMaterial color="#120d09" />
         </mesh>
       </group>
 
       {desks.map((d, i) => (
-        <Desk key={i} position={[d.x, 0, d.z]} />
+        <Desk
+          key={i}
+          position={[d.x, 0, d.z]}
+          rotationY={d.rotationY}
+          woodMat={materials.woodMat}
+          metalMat={materials.metalMat}
+        />
       ))}
 
       {/* Windows down the left wall */}
       <Window position={[-6.9, 2.8, -3]} />
       <Window position={[-6.9, 2.8, 0]} />
 
+      {/* Soft grounding contact shadow under the furniture — cheap, reads as ambient occlusion */}
+      <ContactShadows position={[0, 0.001, -2]} opacity={0.55} scale={14} blur={2.4} far={3.5} color="#000000" />
+
+      {/* Invisible aim point for the window light — keeps the target in the same local space as the group. */}
+      <object3D ref={sunTargetRef} position={[1, 0.6, -2]} />
+      {/* Late-afternoon light pouring through the windows: a spotlight, not a directional sun, so it
+       * naturally falls off with distance — bright near the glass, dim and moody by the back wall. */}
+      <spotLight
+        ref={sunRef}
+        position={[-6.2, 4.6, -1.4]}
+        intensity={16}
+        distance={11}
+        angle={0.6}
+        penumbra={0.65}
+        decay={2}
+        color="#ffe6b8"
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0004}
+        shadow-radius={4}
+      />
+
       <LightBeam position={[0, 9, 1]} rotation={[Math.PI, 0, 0]} length={11} radius={2.6} opacity={0.14} />
-      <pointLight position={[0, 4, 2]} intensity={22} color={PALETTE.accent} />
-      <pointLight position={[0, 3, -6]} intensity={14} color={PALETTE.secondary} />
-      <spotLight position={[0, 8, 4]} intensity={20} angle={0.5} penumbra={0.7} color="#fff4dd" />
+      <pointLight position={[0, 4, 2]} intensity={6} color={PALETTE.accent} />
+      <pointLight position={[0, 2.6, -4.6]} intensity={1.8} color={PALETTE.secondary} />
+      <spotLight position={[0, 8, 4]} intensity={5} angle={0.5} penumbra={0.7} color="#fff4dd" />
     </group>
   );
 }
@@ -325,6 +429,9 @@ function Flower({ position = [0, 0, 0] as THREE.Vector3Tuple, scale = 1 }) {
 }
 
 function LabScene() {
+  const groupRef = useRef<THREE.Group>(null);
+  useStationVisibility(groupRef, STATIONS.lab);
+
   const flaskRef = useRef<THREE.Mesh>(null);
   useFrame((state) => {
     if (flaskRef.current && !prefersReducedMotion) {
@@ -344,7 +451,7 @@ function LabScene() {
   }, []);
 
   return (
-    <group position={[0, -1, STATIONS.lab]}>
+    <group ref={groupRef} position={[0, -1, STATIONS.lab]}>
       {/* Podium the flask sits on, perfume-ad style */}
       <mesh position={[0, -0.55, 0]}>
         <cylinderGeometry args={[1.6, 1.8, 0.5, 48]} />
@@ -413,6 +520,9 @@ function Bond({ to }: { to: THREE.Vector3Tuple }) {
 }
 
 function MoleculeScene() {
+  const sceneRef = useRef<THREE.Group>(null);
+  useStationVisibility(sceneRef, STATIONS.molecule);
+
   const groupRef = useRef<THREE.Group>(null);
   useFrame((state) => {
     if (groupRef.current && !prefersReducedMotion) groupRef.current.rotation.y = state.clock.elapsedTime * 0.25;
@@ -432,7 +542,7 @@ function MoleculeScene() {
   );
 
   return (
-    <group position={[0, 0, STATIONS.molecule]}>
+    <group ref={sceneRef} position={[0, 0, STATIONS.molecule]}>
       <LightBeam position={[0, 6, 0]} rotation={[Math.PI, 0, 0]} length={10} radius={2} opacity={0.2} />
       <group ref={groupRef}>
         {atoms.map((pos, i) => (
@@ -466,6 +576,9 @@ function MoleculeScene() {
 }
 
 function HorizonScene() {
+  const sceneRef = useRef<THREE.Group>(null);
+  useStationVisibility(sceneRef, STATIONS.horizon, 12);
+
   const groupRef = useRef<THREE.Group>(null);
   useFrame((state) => {
     if (groupRef.current && !prefersReducedMotion) {
@@ -493,7 +606,7 @@ function HorizonScene() {
   ];
 
   return (
-    <group position={[0, 0, STATIONS.horizon]}>
+    <group ref={sceneRef} position={[0, 0, STATIONS.horizon]}>
       <LightBeam position={[0, 5, -3]} rotation={[Math.PI, 0, 0]} length={12} radius={2.4} opacity={0.15} />
       <pointLight position={[0, 2, -5]} intensity={20} color={PALETTE.primary} />
       <pointLight position={[0, 0, 2]} intensity={10} color={PALETTE.accent} />
@@ -532,19 +645,25 @@ export default function Scene() {
   return (
     <Canvas
       dpr={[1, 1.5]}
+      shadows={{ type: THREE.VSMShadowMap }}
       gl={{ antialias: true, powerPreference: "high-performance" }}
       camera={{ fov: 55, near: 0.1, far: 120, position: [0, 1.2, STATIONS.hero] }}
     >
       <color attach="background" args={[PALETTE.fog]} />
       <fogExp2 attach="fog" args={[PALETTE.fog, 0.045]} />
-      <ambientLight intensity={0.25} />
-      <Environment preset="studio" background={false} environmentIntensity={0.6} />
+      <ambientLight intensity={0.12} />
+      <Environment preset="studio" background={false} environmentIntensity={0.25} />
       <CameraRig />
       <Starfield />
       <ClassroomScene />
       <LabScene />
       <MoleculeScene />
       <HorizonScene />
+      <EffectComposer multisampling={0}>
+        <Bloom mipmapBlur luminanceThreshold={0.45} luminanceSmoothing={0.3} intensity={0.5} radius={0.75} />
+        <Vignette eskil={false} offset={0.22} darkness={0.6} />
+        <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+      </EffectComposer>
     </Canvas>
   );
 }
