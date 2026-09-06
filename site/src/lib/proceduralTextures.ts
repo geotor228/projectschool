@@ -113,6 +113,57 @@ export function createWoodTexture({ base, dark, light, size = 512, repeat = [1, 
   return { map, roughnessMap };
 }
 
+type PlasterOptions = {
+  base: string;
+  dark: string;
+  light: string;
+  size?: number;
+  repeat?: [number, number];
+  seed?: number;
+};
+
+/** Warm mottled plaster: soft blotchy color variation + fine speckle, so walls read as a real
+ * textured surface instead of a flat color fill. */
+export function createPlasterTexture({ base, dark, light, size = 512, repeat = [1, 1], seed = 1 }: PlasterOptions) {
+  const { canvas, ctx } = makeCanvas(size);
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, size, size);
+
+  const blotches = 22;
+  for (let i = 0; i < blotches; i++) {
+    const x = hash(i, 50, seed) * size;
+    const y = hash(i, 51, seed) * size;
+    const r = 40 + hash(i, 52, seed) * 140;
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+    const tint = hash(i, 53, seed) > 0.5 ? light : dark;
+    grad.addColorStop(0, tint);
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.globalAlpha = 0.05 + hash(i, 54, seed) * 0.06;
+    ctx.fillStyle = grad;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  ctx.globalAlpha = 1;
+
+  speckle(ctx, size, seed + 30, 0.003, light, [0.02, 0.06]);
+  speckle(ctx, size, seed + 40, 0.002, dark, [0.03, 0.08]);
+
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(repeat[0], repeat[1]);
+
+  const rough = makeCanvas(size);
+  rough.ctx.fillStyle = "#cfcfcf";
+  rough.ctx.fillRect(0, 0, size, size);
+  speckle(rough.ctx, size, seed + 60, 0.004, "#e8e8e8", [0.05, 0.12]);
+  speckle(rough.ctx, size, seed + 70, 0.004, "#9a9a9a", [0.05, 0.12]);
+  const roughnessMap = new THREE.CanvasTexture(rough.canvas);
+  roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping;
+  roughnessMap.repeat.set(repeat[0], repeat[1]);
+
+  return { map, roughnessMap };
+}
+
 /** Chalkboard slate: near-black green base, soft chalk-dust smudges, faint scratch lines. */
 export function createSlateTexture(size = 512) {
   const { canvas, ctx } = makeCanvas(size);

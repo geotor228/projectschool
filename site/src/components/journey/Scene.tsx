@@ -7,7 +7,7 @@ import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postp
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
 import { journeyState } from "@/lib/journeyState";
-import { createWoodTexture, createSlateTexture } from "@/lib/proceduralTextures";
+import { createWoodTexture, createSlateTexture, createPlasterTexture } from "@/lib/proceduralTextures";
 
 const STATIONS = {
   hero: 6,
@@ -29,6 +29,11 @@ const PALETTE = {
   secondary: "#7a2e3a",
   accent: "#d4af37",
   fog: "#0b0908",
+  // Biophilic accents — this is a biotech/botany project, not a pure jewelry-ad noir piece, so
+  // the gold/wine palette gets a living green counterpoint via plants and warmer wall tones.
+  leafDeep: "#3c6238",
+  leafBright: "#6f9c4f",
+  terracotta: "#8a4a34",
 };
 
 /** Camera z/x/y is driven by scroll progress, not the clock, so it stays fine under
@@ -36,6 +41,19 @@ const PALETTE = {
  * spins (starfield, flask, molecule) get frozen here — those are the actual autoplay motion. */
 const prefersReducedMotion =
   typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Each scene's own lights cluster tightly around its set dressing, so the stretch of travel
+ * between two stations — where neither scene's lights reach — was falling to near-black fog for
+ * a good second of scroll (worst around classroom→lab, since the classroom's lights sit up near
+ * the blackboard, not out toward the back wall). A soft light that always travels with the camera
+ * fixes every transition at once instead of patching each corridor individually. */
+function TravelLight() {
+  const ref = useRef<THREE.PointLight>(null);
+  useFrame((state) => {
+    if (ref.current) ref.current.position.set(state.camera.position.x, state.camera.position.y + 1, state.camera.position.z - 3);
+  });
+  return <pointLight ref={ref} intensity={5} distance={14} decay={2} color={PALETTE.primary} />;
+}
 
 function CameraRig() {
   const target = useMemo(() => new THREE.Vector3(), []);
@@ -50,7 +68,12 @@ function CameraRig() {
     state.camera.position.y = THREE.MathUtils.damp(state.camera.position.y, 1.2 + bob, 4, 0.1);
     state.camera.position.z = THREE.MathUtils.damp(state.camera.position.z, z, 6, 0.1);
 
-    target.set(sway * 0.5, 1, z - 12);
+    // Look-ahead was 12 units, which meant that during the empty stretch between two stations'
+    // set dressing, the camera was aimed at a point even further into that empty stretch than
+    // its own position — so no amount of light near the camera helped, the frame was centered on
+    // genuinely empty space. A shorter look-ahead keeps the aim point closer to what's actually
+    // built out around the camera at any given moment.
+    target.set(sway * 0.5, 1, z - 7);
     state.camera.lookAt(target);
   });
   return null;
@@ -58,9 +81,11 @@ function CameraRig() {
 
 /** Stations sit only 20-22 units apart with nothing occluding between them, so without this a
  * strongly-lit neighboring scene (e.g. the lab's podium light) shows through the fog at the edge
- * of frame while you're still in the previous scene. Hide each scene once the camera has moved
- * past the midpoint to its neighbor — well within fog range, so the cut is never visible. */
-function useStationVisibility(ref: React.RefObject<THREE.Group | null>, stationZ: number, radius = 10.5) {
+ * of frame while you're still in the previous scene. Hide each scene once the camera is well past
+ * it. Radius is deliberately bigger than half the station spacing (~10-11) so neighboring scenes
+ * overlap for a good stretch instead of both being near the edge of their fade at the same time —
+ * that edge-of-both-ranges gap is what read as the screen going black for a second on transitions. */
+function useStationVisibility(ref: React.RefObject<THREE.Group | null>, stationZ: number, radius = 13.5) {
   useFrame(() => {
     if (!ref.current) return;
     const cameraZ = THREE.MathUtils.lerp(STATIONS.hero, STATIONS.horizon, journeyState.progress);
@@ -68,16 +93,27 @@ function useStationVisibility(ref: React.RefObject<THREE.Group | null>, stationZ
   });
 }
 
+/** Drifting motes along the whole travel corridor, in two tones (gold + leaf green) rather than
+ * one flat color — this is what keeps the space *between* stations from reading as empty black
+ * dead air during scroll transitions, and doubles as the "living, botanical" texture the piece
+ * wants throughout, not just inside each set. */
 function Starfield() {
-  const positions = useMemo(() => {
-    const count = 500;
-    const arr = new Float32Array(count * 3);
+  const { positions, colors } = useMemo(() => {
+    const count = 900;
+    const posArr = new Float32Array(count * 3);
+    const colorArr = new Float32Array(count * 3);
+    const gold = new THREE.Color(PALETTE.primary);
+    const leaf = new THREE.Color(PALETTE.leafBright);
     for (let i = 0; i < count; i++) {
-      arr[i * 3] = (Math.random() - 0.5) * 60;
-      arr[i * 3 + 1] = (Math.random() - 0.5) * 40;
-      arr[i * 3 + 2] = Math.random() * -100 + 10;
+      posArr[i * 3] = (Math.random() - 0.5) * 60;
+      posArr[i * 3 + 1] = (Math.random() - 0.5) * 40;
+      posArr[i * 3 + 2] = Math.random() * -100 + 10;
+      const c = Math.random() > 0.62 ? leaf : gold;
+      colorArr[i * 3] = c.r;
+      colorArr[i * 3 + 1] = c.g;
+      colorArr[i * 3 + 2] = c.b;
     }
-    return arr;
+    return { positions: posArr, colors: colorArr };
   }, []);
 
   const ref = useRef<THREE.Points>(null);
@@ -89,8 +125,9 @@ function Starfield() {
     <points ref={ref}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
       </bufferGeometry>
-      <pointsMaterial size={0.05} color={PALETTE.primary} transparent opacity={0.35} />
+      <pointsMaterial size={0.06} vertexColors transparent opacity={0.5} sizeAttenuation />
     </points>
   );
 }
@@ -200,6 +237,65 @@ function Window({ position }: { position: THREE.Vector3Tuple }) {
   );
 }
 
+/** A potted plant: terracotta pot + a fan of long leaf blades, reusing the same curved-teardrop
+ * shape and fan-rotation trick as the Flower's petals. The main "more life, more green" device
+ * for the classroom's biophilic-biotech feel, not just the gold/wine noir palette. */
+function PottedPlant({ position, scale = 1 }: { position: THREE.Vector3Tuple; scale?: number }) {
+  const leafGeometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.bezierCurveTo(0.16, 0.2, 0.2, 0.68, 0, 1.05);
+    shape.bezierCurveTo(-0.2, 0.68, -0.16, 0.2, 0, 0);
+    return new THREE.ShapeGeometry(shape, 10);
+  }, []);
+
+  const leaves = useMemo(
+    () =>
+      Array.from({ length: 9 }, (_, i) => ({
+        angle: (i / 9) * Math.PI * 2 + seededJitter(i, 200) * 0.6,
+        tilt: 0.5 + seededJitter(i, 201) * 0.45,
+        s: 0.7 + seededJitter(i, 202) * 0.45,
+        color: seededJitter(i, 203) > 0.45 ? PALETTE.leafDeep : PALETTE.leafBright,
+      })),
+    [],
+  );
+
+  return (
+    <group position={position} scale={scale}>
+      <mesh position={[0, 0.22, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.24, 0.19, 0.44, 16]} />
+        <meshStandardMaterial color={PALETTE.terracotta} roughness={0.85} />
+      </mesh>
+      <mesh position={[0, 0.445, 0]}>
+        <cylinderGeometry args={[0.25, 0.25, 0.05, 16]} />
+        <meshStandardMaterial color="#5c3122" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.47, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.22, 16]} />
+        <meshStandardMaterial color="#1c140d" roughness={1} />
+      </mesh>
+      {leaves.map((leaf, i) => (
+        <mesh
+          key={i}
+          geometry={leafGeometry}
+          position={[0, 0.46, 0]}
+          rotation={[leaf.tilt, leaf.angle, 0]}
+          scale={leaf.s}
+          castShadow
+        >
+          <meshStandardMaterial
+            color={leaf.color}
+            side={THREE.DoubleSide}
+            roughness={0.45}
+            emissive={leaf.color}
+            emissiveIntensity={0.07}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 function ClassroomScene() {
   const groupRef = useRef<THREE.Group>(null);
   useStationVisibility(groupRef, STATIONS.classroom);
@@ -249,7 +345,27 @@ function ClassroomScene() {
       envMapIntensity: 0,
     });
     const slateMat = new THREE.MeshStandardMaterial({ map: createSlateTexture(512), roughness: 0.7 });
-    return { woodMat, metalMat, floorMat, slateMat };
+    // Walls: warm, muted olive-charcoal plaster — not pure black, not pure brown. Reads as
+    // "greenhouse-adjacent lab" rather than either a jewelry-ad void or a plain office wall.
+    const wallPlaster = createPlasterTexture({
+      base: "#2b2c23",
+      dark: "#1a1b15",
+      light: "#454636",
+      size: 512,
+      repeat: [3, 2],
+      seed: 21,
+    });
+    const wallMat = new THREE.MeshStandardMaterial({
+      map: wallPlaster.map,
+      roughnessMap: wallPlaster.roughnessMap,
+      roughness: 0.95,
+      envMapIntensity: 0.08,
+      // A faint self-glow so the far stretches of wall (past the reach of any point light) still
+      // read as a dim surface instead of crushing to pure fog-black — a baseline visibility floor.
+      emissive: new THREE.Color(PALETTE.primary),
+      emissiveIntensity: 0.06,
+    });
+    return { woodMat, metalMat, floorMat, slateMat, wallMat };
   }, []);
 
   // Slight per-desk position/rotation jitter so the row reads as real furniture, not a grid of
@@ -276,6 +392,28 @@ function ClassroomScene() {
       <mesh position={[0, -0.02, -2]} rotation={[-Math.PI / 2, 0, 0]} material={materials.floorMat} receiveShadow>
         <planeGeometry args={[14, 12]} />
       </mesh>
+
+      {/* Room shell: side walls + ceiling only — never a front/back wall, since the camera flies
+       * straight through the whole journey along z and would clip through anything perpendicular
+       * to its path. Side walls run parallel to that path, so there's no collision risk, and they're
+       * what actually fixes "everything past the furniture is just black": there was no room here
+       * before, just floating objects in the fog. */}
+      <mesh position={[-7, 4, -2]} rotation={[0, Math.PI / 2, 0]} material={materials.wallMat} receiveShadow>
+        <planeGeometry args={[20, 8]} />
+      </mesh>
+      <mesh position={[7, 4, -2]} rotation={[0, -Math.PI / 2, 0]} material={materials.wallMat} receiveShadow>
+        <planeGeometry args={[20, 8]} />
+      </mesh>
+      <mesh position={[0, 8, -2]} rotation={[Math.PI / 2, 0, 0]} material={materials.wallMat} receiveShadow>
+        <planeGeometry args={[14, 20]} />
+      </mesh>
+
+      {/* Potted plants — the biophilic counterweight to the gold/wine palette: real green, real
+       * life, not just another metal-and-varnish surface. */}
+      <PottedPlant position={[-6.35, 0, -3.35]} scale={1.05} />
+      <PottedPlant position={[-6.35, 0, -0.35]} scale={0.95} />
+      <PottedPlant position={[6.1, 0, -6.2]} scale={1.3} />
+
       {/* Blackboard, real chalk-slate texture instead of a flat fill */}
       <mesh position={[0, 3.2, -6]} material={materials.slateMat} receiveShadow>
         <planeGeometry args={[10, 5]} />
@@ -287,11 +425,11 @@ function ClassroomScene() {
       {/* Chalk molecule sketch on the board — a small nod to the subject matter */}
       <mesh position={[-2.6, 4, -5.93]}>
         <ringGeometry args={[0.28, 0.32, 24]} />
-        <meshBasicMaterial color={PALETTE.accent} transparent opacity={0.5} />
+        <meshBasicMaterial color={PALETTE.accent} transparent opacity={0.22} />
       </mesh>
       <mesh position={[-1.9, 3.7, -5.93]}>
         <ringGeometry args={[0.18, 0.21, 24]} />
-        <meshBasicMaterial color={PALETTE.accent} transparent opacity={0.4} />
+        <meshBasicMaterial color={PALETTE.accent} transparent opacity={0.18} />
       </mesh>
 
       {/* Teacher's desk, larger, facing the class — pushed back near the board so the camera's
@@ -577,7 +715,7 @@ function MoleculeScene() {
 
 function HorizonScene() {
   const sceneRef = useRef<THREE.Group>(null);
-  useStationVisibility(sceneRef, STATIONS.horizon, 12);
+  useStationVisibility(sceneRef, STATIONS.horizon, 15);
 
   const groupRef = useRef<THREE.Group>(null);
   useFrame((state) => {
@@ -650,10 +788,11 @@ export default function Scene() {
       camera={{ fov: 55, near: 0.1, far: 120, position: [0, 1.2, STATIONS.hero] }}
     >
       <color attach="background" args={[PALETTE.fog]} />
-      <fogExp2 attach="fog" args={[PALETTE.fog, 0.045]} />
-      <ambientLight intensity={0.12} />
+      <fogExp2 attach="fog" args={[PALETTE.fog, 0.034]} />
+      <ambientLight intensity={0.32} />
       <Environment preset="studio" background={false} environmentIntensity={0.25} />
       <CameraRig />
+      <TravelLight />
       <Starfield />
       <ClassroomScene />
       <LabScene />
