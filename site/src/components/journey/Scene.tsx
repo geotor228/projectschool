@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, ContactShadows, Text, MeshReflectorMaterial, RoundedBox } from "@react-three/drei";
+import { Environment, ContactShadows, Text, MeshReflectorMaterial, RoundedBox, Instances, Instance } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
@@ -11,6 +11,7 @@ import {
   createWoodTexture,
   createParquetTexture,
   createTileFloorTexture,
+  createTechPanelTexture,
   createPeriodicTableTexture,
   createLabDiagramTexture,
   createSlateTexture,
@@ -2024,9 +2025,238 @@ function MonitorProp({ position, rotationY = 0, hue = "blue" }: { position: THRE
   );
 }
 
+/** Indicator LEDs, drawn as one instanced draw call. There are well over a hundred of these across
+ * the racks and consoles; as individual meshes they'd be the single biggest draw-call cost in the
+ * scene, and they're all the same sphere. */
+function IndicatorLights({
+  points,
+  color,
+  radius = 0.018,
+}: {
+  points: THREE.Vector3Tuple[];
+  color: string;
+  radius?: number;
+}) {
+  return (
+    <Instances limit={points.length} range={points.length}>
+      <sphereGeometry args={[radius, 6, 6]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.2} roughness={0.4} />
+      {points.map((p, i) => (
+        <Instance key={i} position={p} />
+      ))}
+    </Instances>
+  );
+}
+
+/** A server / instrument rack: dark chassis, vented blanking panels, and a column of status LEDs. */
+function ServerRack({ position, rotationY = 0, height = 2.2 }: { position: THREE.Vector3Tuple; rotationY?: number; height?: number }) {
+  const shell = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#2b3138", metalness: 0.6, roughness: 0.38, envMapIntensity: 0.7 }),
+    [],
+  );
+  const units = Math.max(4, Math.round(height / 0.28));
+  const leds = useMemo(() => {
+    const pts: THREE.Vector3Tuple[] = [];
+    for (let u = 0; u < units; u++) {
+      if (seededJitter(u, 91) > 0.55) continue;
+      for (let k = 0; k < 3; k++) pts.push([-0.24 + k * 0.06, 0.16 + u * 0.28, 0.221]);
+    }
+    return pts;
+  }, [units]);
+
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh material={shell} castShadow receiveShadow position={[0, height / 2, 0]}>
+        <boxGeometry args={[0.78, height, 0.44]} />
+      </mesh>
+      {Array.from({ length: units }, (_, u) => (
+        <mesh key={u} position={[0, 0.16 + u * 0.28, 0.225]}>
+          <planeGeometry args={[0.7, 0.2]} />
+          <meshStandardMaterial color={u % 3 === 0 ? "#1b2026" : "#343b43"} metalness={0.5} roughness={0.45} />
+        </mesh>
+      ))}
+      <IndicatorLights points={leds} color="#5fe0a8" />
+      <mesh position={[0, height + 0.03, 0]} material={shell}>
+        <boxGeometry args={[0.84, 0.06, 0.5]} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Benchtop centrifuge: drum body, a smoked domed lid and a small readout. */
+function Centrifuge({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; rotationY?: number }) {
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh castShadow receiveShadow position={[0, 0.17, 0]}>
+        <cylinderGeometry args={[0.32, 0.35, 0.34, 20]} />
+        <meshStandardMaterial color="#e9edef" metalness={0.25} roughness={0.35} envMapIntensity={0.6} />
+      </mesh>
+      <mesh position={[0, 0.36, 0]}>
+        <sphereGeometry args={[0.31, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
+        <meshPhysicalMaterial color="#8fa3ad" transmission={0.6} roughness={0.12} thickness={0.1} ior={1.4} />
+      </mesh>
+      <mesh position={[0, 0.2, 0.34]} rotation={[0.35, 0, 0]}>
+        <planeGeometry args={[0.26, 0.12]} />
+        <meshStandardMaterial color="#0d1b22" emissive="#3fd0e8" emissiveIntensity={0.8} roughness={0.3} />
+      </mesh>
+    </group>
+  );
+}
+
+/** A six-axis handling arm parked over a bench — the piece of kit that reads "automated lab"
+ * fastest, even completely still. */
+function RoboticArm({ position, rotationY = 0, scale = 1 }: { position: THREE.Vector3Tuple; rotationY?: number; scale?: number }) {
+  const shell = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#eceef0", metalness: 0.35, roughness: 0.3, envMapIntensity: 0.8 }),
+    [],
+  );
+  const joint = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#2f363d", metalness: 0.7, roughness: 0.3, envMapIntensity: 0.8 }),
+    [],
+  );
+  return (
+    <group position={position} rotation={[0, rotationY, 0]} scale={scale}>
+      <mesh material={joint} castShadow position={[0, 0.05, 0]}>
+        <cylinderGeometry args={[0.22, 0.26, 0.1, 18]} />
+      </mesh>
+      <mesh material={shell} castShadow position={[0, 0.28, 0]}>
+        <cylinderGeometry args={[0.15, 0.18, 0.36, 16]} />
+      </mesh>
+      <group position={[0, 0.46, 0]} rotation={[0, 0, -0.5]}>
+        <mesh material={shell} castShadow position={[0, 0.34, 0]}>
+          <boxGeometry args={[0.16, 0.7, 0.18]} />
+        </mesh>
+        <mesh material={joint} castShadow position={[0, 0.7, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.1, 0.1, 0.2, 14]} />
+        </mesh>
+        <group position={[0, 0.7, 0]} rotation={[0, 0, 1.15]}>
+          <mesh material={shell} castShadow position={[0, 0.3, 0]}>
+            <boxGeometry args={[0.13, 0.62, 0.15]} />
+          </mesh>
+          <mesh material={joint} castShadow position={[0, 0.63, 0]}>
+            <boxGeometry args={[0.1, 0.12, 0.12]} />
+          </mesh>
+          {[-0.05, 0.05].map((x, i) => (
+            <mesh key={i} material={joint} castShadow position={[x, 0.73, 0]}>
+              <boxGeometry args={[0.025, 0.14, 0.04]} />
+            </mesh>
+          ))}
+        </group>
+      </group>
+    </group>
+  );
+}
+
+/** An angled control desk: dark glass top, a lit readout strip and a field of small buttons. */
+function ControlConsole({ position, rotationY = 0, width = 1.6 }: { position: THREE.Vector3Tuple; rotationY?: number; width?: number }) {
+  const buttons = useMemo(() => {
+    const pts: THREE.Vector3Tuple[] = [];
+    const cols = Math.round(width / 0.13);
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (seededJitter(r * cols + c, 77) > 0.72) continue;
+        pts.push([-width / 2 + 0.09 + c * 0.13, 0.02 + r * 0.06, 0.03 - r * 0.05]);
+      }
+    }
+    return pts;
+  }, [width]);
+
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh castShadow receiveShadow position={[0, 0.42, 0]}>
+        <boxGeometry args={[width, 0.84, 0.6]} />
+        <meshStandardMaterial color="#dfe3e6" metalness={0.2} roughness={0.42} envMapIntensity={0.5} />
+      </mesh>
+      <mesh position={[0, 0.87, 0.02]} rotation={[-0.42, 0, 0]} castShadow>
+        <boxGeometry args={[width, 0.42, 0.05]} />
+        <meshStandardMaterial color="#232a31" metalness={0.5} roughness={0.28} envMapIntensity={0.7} />
+      </mesh>
+      <group position={[0, 0.88, 0.03]} rotation={[-0.42, 0, 0]}>
+        <mesh position={[0, 0.12, 0.03]}>
+          <planeGeometry args={[width - 0.12, 0.12]} />
+          <meshStandardMaterial color="#0a1a22" emissive="#3fd0e8" emissiveIntensity={0.9} roughness={0.3} />
+        </mesh>
+        <IndicatorLights points={buttons} color="#ffb469" radius={0.016} />
+      </group>
+    </group>
+  );
+}
+
+/** A glass-fronted cabinet of racked test tubes — repeated glass tubes drawn as one instanced call. */
+function TubeCabinet({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; rotationY?: number }) {
+  const tubes = useMemo(() => {
+    const pts: THREE.Vector3Tuple[] = [];
+    for (let s = 0; s < 3; s++) {
+      for (let i = 0; i < 12; i++) {
+        pts.push([-0.62 + i * 0.113, 0.62 + s * 0.5, 0]);
+      }
+    }
+    return pts;
+  }, []);
+
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh castShadow receiveShadow position={[0, 1.05, 0]}>
+        <boxGeometry args={[1.5, 2.1, 0.42]} />
+        <meshStandardMaterial color="#e4e8ea" metalness={0.25} roughness={0.4} envMapIntensity={0.5} />
+      </mesh>
+      {/* Glazed front */}
+      <mesh position={[0, 1.15, 0.215]}>
+        <planeGeometry args={[1.34, 1.72]} />
+        <meshPhysicalMaterial color="#dceaf0" transmission={0.85} roughness={0.06} thickness={0.04} ior={1.5} />
+      </mesh>
+      {[0.55, 1.05, 1.55].map((y, i) => (
+        <mesh key={i} position={[0, y, 0.02]}>
+          <boxGeometry args={[1.34, 0.03, 0.34]} />
+          <meshStandardMaterial color="#c3c9cd" metalness={0.4} roughness={0.4} />
+        </mesh>
+      ))}
+      <Instances limit={tubes.length} range={tubes.length}>
+        <cylinderGeometry args={[0.03, 0.03, 0.22, 8]} />
+        <meshStandardMaterial color="#9fe0d6" emissive="#3fb9a8" emissiveIntensity={0.35} roughness={0.25} metalness={0.1} />
+        {tubes.map((p, i) => (
+          <Instance key={i} position={p} />
+        ))}
+      </Instances>
+    </group>
+  );
+}
+
+/** The plinth the hero molecule sits above: a lit ring, a soft column of light and a caption band —
+ * it turns the free-floating model into a deliberate exhibit rather than an object hanging in a room. */
+function HoloPlinth({ position, radius = 1.15 }: { position: THREE.Vector3Tuple; radius?: number }) {
+  return (
+    <group position={position}>
+      <mesh castShadow receiveShadow position={[0, 0.3, 0]}>
+        <cylinderGeometry args={[radius, radius * 1.08, 0.6, 32]} />
+        <meshStandardMaterial color="#e7eaec" metalness={0.3} roughness={0.3} envMapIntensity={0.8} />
+      </mesh>
+      <mesh position={[0, 0.62, 0]}>
+        <cylinderGeometry args={[radius * 0.94, radius * 0.94, 0.05, 32]} />
+        <meshStandardMaterial color="#0d1b22" emissive="#4fd8ee" emissiveIntensity={1.6} roughness={0.3} />
+      </mesh>
+      {/* Column of light rising off the plinth, additive so it reads as a projection, not a solid */}
+      <mesh position={[0, 2.1, 0]}>
+        <cylinderGeometry args={[radius * 0.8, radius * 0.92, 3, 24, 1, true]} />
+        <meshBasicMaterial
+          color="#63d9f2"
+          transparent
+          opacity={0.07}
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      <pointLight position={[0, 1.1, 0]} intensity={4} distance={5} decay={2} color="#5fd2ec" />
+    </group>
+  );
+}
+
 function MoleculeScene() {
   const sceneRef = useRef<THREE.Group>(null);
-  useStationVisibility(sceneRef, STATIONS.molecule);
+  // Dissolves rather than flips off: this room now has a back wall, and the camera's path runs
+  // straight through it on the way to the closing scene.
+  useStationDissolve(sceneRef, STATIONS.molecule, { inAt: 13.5, outAt: 6.5, fade: 2.5 });
 
   const groupRef = useRef<THREE.Group>(null);
   useFrame((state) => {
@@ -2042,25 +2272,77 @@ function MoleculeScene() {
     return { chrome, dark, white };
   }, []);
 
-  // Bright, clean modern-lab room shell — cool light gray-blue, a world away from the noir
-  // gold/wine palette elsewhere, matching the reference photos directly.
+  // High-spec facility shell: light alloy panelling on every surface, polished floor, cool light.
+  // Every surface here is a manufactured panel rather than paint — that, plus the lit seams, is
+  // what separates a research facility from a plain bright room.
   const roomMaterials = useMemo(() => {
-    const wallPlaster = createPlasterTexture({
-      base: "#cdd4d8",
-      dark: "#b9c1c6",
-      light: "#dee4e6",
-      size: 512,
-      repeat: [3, 2],
+    const wallPanels = createTechPanelTexture({
+      size: 1024,
+      panelsX: 4,
+      panelsY: 3,
+      base: "#dbe0e4",
+      seam: "#9ea8af",
+      repeat: [6, 1],
       seed: 71,
     });
-    const wallMat = new THREE.MeshStandardMaterial({ map: wallPlaster.map, roughnessMap: wallPlaster.roughnessMap, roughness: 0.85 });
-    const floorMat = new THREE.MeshStandardMaterial({ color: "#a9afb2", roughness: 0.35, metalness: 0.15, envMapIntensity: 0.4 });
+    const wallMat = new THREE.MeshStandardMaterial({
+      map: wallPanels.map,
+      roughnessMap: wallPanels.roughnessMap,
+      normalMap: wallPanels.normalMap,
+      normalScale: new THREE.Vector2(0.35, 0.35),
+      roughness: 0.42,
+      metalness: 0.25,
+      envMapIntensity: 0.7,
+    });
+    const floorPanels = createTechPanelTexture({
+      size: 1024,
+      panelsX: 3,
+      panelsY: 3,
+      base: "#c9d0d5",
+      seam: "#98a1a8",
+      repeat: [4, 9],
+      seed: 73,
+      bolts: false,
+    });
+    const floorMat = new THREE.MeshStandardMaterial({
+      map: floorPanels.map,
+      roughnessMap: floorPanels.roughnessMap,
+      normalMap: floorPanels.normalMap,
+      normalScale: new THREE.Vector2(0.12, 0.12),
+      // Poured resin over panel: glossy enough to carry a soft reflection of the ceiling lights
+      // down the length of the room, which is most of the "clean tech facility" read.
+      roughness: 0.18,
+      metalness: 0.35,
+      envMapIntensity: 1,
+    });
     const ceilingTiles = createAcousticTileTexture(512, 5, "#eef0ee");
     ceilingTiles.repeat.set(3, 5);
-    const ceilingMat = new THREE.MeshStandardMaterial({ map: ceilingTiles, roughness: 0.95 });
-    const counterMat = new THREE.MeshStandardMaterial({ color: "#232a33", roughness: 0.4 });
-    const cabinetMat = new THREE.MeshStandardMaterial({ color: "#d7dadc", roughness: 0.6 });
-    return { wallMat, floorMat, ceilingMat, counterMat, cabinetMat };
+    const ceilingMat = new THREE.MeshStandardMaterial({ map: ceilingTiles, roughness: 0.9 });
+    const counterMat = new THREE.MeshStandardMaterial({
+      color: "#2b323a",
+      metalness: 0.45,
+      roughness: 0.3,
+      envMapIntensity: 0.8,
+    });
+    const cabinetMat = new THREE.MeshStandardMaterial({
+      color: "#e2e6e9",
+      metalness: 0.25,
+      roughness: 0.4,
+      envMapIntensity: 0.6,
+    });
+    const glassMat = new THREE.MeshPhysicalMaterial({
+      color: "#cfe4ec",
+      transmission: 0.86,
+      roughness: 0.05,
+      thickness: 0.04,
+      ior: 1.5,
+      envMapIntensity: 1,
+    });
+    const screenMats = [
+      new THREE.MeshStandardMaterial({ map: createDataScreenTexture(256, "blue"), emissiveMap: createDataScreenTexture(256, "blue"), emissive: "#ffffff", emissiveIntensity: 0.55, roughness: 0.25 }),
+      new THREE.MeshStandardMaterial({ map: createDataScreenTexture(256, "green"), emissiveMap: createDataScreenTexture(256, "green"), emissive: "#ffffff", emissiveIntensity: 0.55, roughness: 0.25 }),
+    ];
+    return { wallMat, floorMat, ceilingMat, counterMat, cabinetMat, glassMat, screenMats };
   }, []);
 
   const atoms = useMemo(
@@ -2096,14 +2378,83 @@ function MoleculeScene() {
       <mesh position={[0, CEILING_Y, 0]} rotation={[Math.PI / 2, 0, 0]} material={roomMaterials.ceilingMat} receiveShadow>
         <planeGeometry args={[WALL_X * 2, 26]} />
       </mesh>
-      {[-3.2, 0, 3.2].map((z, i) => (
+      {[-6.4, -3.2, 0, 3.2, 6.4].map((z, i) => (
         <mesh key={i} position={[0, CEILING_Y - 0.02, z]} rotation={[Math.PI / 2, 0, 0]}>
           <planeGeometry args={[2.6, 1.3]} />
           <meshStandardMaterial color="#f6f7f4" emissive="#eef2ff" emissiveIntensity={1.3} />
         </mesh>
       ))}
 
-      {/* Side benches with glowing monitors, echoing the reference's data-screen-lined walls */}
+      {/* Continuous LED coves: one pair along the ceiling edges, one pair at the foot of each wall.
+       * Long thin emissive strips are what make a panelled room read as engineered rather than
+       * merely painted, and they light the floor's reflection down the length of the room. */}
+      {[-WALL_X + 0.12, WALL_X - 0.12].map((x, i) => (
+        <mesh key={`cove-${i}`} position={[x, CEILING_Y - 0.16, -1]}>
+          <boxGeometry args={[0.08, 0.06, 24]} />
+          <meshStandardMaterial color="#dff4ff" emissive="#7fd8f5" emissiveIntensity={2.4} roughness={0.3} />
+        </mesh>
+      ))}
+      {[-WALL_X + 0.06, WALL_X - 0.06].map((x, i) => (
+        <mesh key={`skirt-${i}`} position={[x, FLOOR_Y + 0.08, -1]}>
+          <boxGeometry args={[0.05, 0.05, 24]} />
+          <meshStandardMaterial color="#cfeeff" emissive="#4fc8e8" emissiveIntensity={1.8} roughness={0.3} />
+        </mesh>
+      ))}
+      {/* Guide lines inlaid in the floor, as in a real clean-room circulation route */}
+      {[-2.6, 2.6].map((x, i) => (
+        <mesh key={`guide-${i}`} position={[x, FLOOR_Y + 0.012, -1]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[0.07, 22]} />
+          <meshStandardMaterial color="#bfe9f7" emissive="#49c4e6" emissiveIntensity={1.1} roughness={0.4} />
+        </mesh>
+      ))}
+
+      {/* Back wall: panelled, with a bank of data screens, a glazed partition onto the corridor
+       * beyond, and lit seams. Set well back at z -10 — the camera's path runs through this room
+       * too, and the scene dissolves out by z -60.5 in world terms, comfortably short of it. */}
+      <mesh position={[0, (FLOOR_Y + CEILING_Y) / 2, -10]} material={roomMaterials.wallMat} receiveShadow>
+        <planeGeometry args={[WALL_X * 2, CEILING_Y - FLOOR_Y]} />
+      </mesh>
+      {[-3.4, 0, 3.4].map((x, i) => (
+        <group key={`screen-${i}`} position={[x, FLOOR_Y + 2.5, -9.93]}>
+          <mesh material={roomMaterials.screenMats[i % 2]}>
+            <planeGeometry args={[2.5, 1.4]} />
+          </mesh>
+          <mesh position={[0, 0, -0.02]}>
+            <boxGeometry args={[2.62, 1.52, 0.04]} />
+            <meshStandardMaterial color="#39424a" metalness={0.6} roughness={0.35} />
+          </mesh>
+        </group>
+      ))}
+      {/* Glazed partition band under the screens, with the corridor light behind it */}
+      <mesh position={[0, FLOOR_Y + 0.95, -9.9]} material={roomMaterials.glassMat}>
+        <planeGeometry args={[WALL_X * 2 - 1.2, 1.5]} />
+      </mesh>
+      {[-4.4, -1.5, 1.5, 4.4].map((x, i) => (
+        <mesh key={`mullion-${i}`} position={[x, FLOOR_Y + 0.95, -9.88]}>
+          <boxGeometry args={[0.07, 1.5, 0.06]} />
+          <meshStandardMaterial color="#8b949b" metalness={0.7} roughness={0.3} />
+        </mesh>
+      ))}
+      <mesh position={[0, FLOOR_Y + 1.73, -9.86]}>
+        <boxGeometry args={[WALL_X * 2 - 1.2, 0.05, 0.05]} />
+        <meshStandardMaterial color="#d8f2fb" emissive="#5cd0ec" emissiveIntensity={1.8} roughness={0.3} />
+      </mesh>
+      <pointLight position={[0, FLOOR_Y + 1.2, -9.4]} intensity={5} distance={7} decay={2} color="#7fd8f5" />
+
+      {/* Cable tray running the length of the ceiling, with its bundled runs — the services no
+       * real facility hides completely. */}
+      <mesh position={[WALL_X - 1.1, CEILING_Y - 0.34, -1]}>
+        <boxGeometry args={[0.42, 0.06, 22]} />
+        <meshStandardMaterial color="#9099a0" metalness={0.65} roughness={0.4} />
+      </mesh>
+      {[-0.12, 0, 0.12].map((o, i) => (
+        <mesh key={`cable-${i}`} position={[WALL_X - 1.1 + o, CEILING_Y - 0.28, -1]}>
+          <boxGeometry args={[0.05, 0.05, 22]} />
+          <meshStandardMaterial color={i === 1 ? "#2f3439" : "#3c4348"} roughness={0.7} />
+        </mesh>
+      ))}
+
+      {/* Left-hand analysis bench */}
       <mesh position={[-WALL_X + 0.9, FLOOR_Y + 0.5, -3]} material={roomMaterials.cabinetMat} receiveShadow castShadow>
         <boxGeometry args={[1.5, 1, 2.6]} />
       </mesh>
@@ -2113,6 +2464,7 @@ function MoleculeScene() {
       <MonitorProp position={[-WALL_X + 0.9, FLOOR_Y + 1.05, -3.7]} rotationY={Math.PI * 0.15} hue="blue" />
       <MonitorProp position={[-WALL_X + 0.9, FLOOR_Y + 1.05, -2.2]} rotationY={Math.PI * 0.15} hue="green" />
 
+      {/* Right-hand bench, now with a centrifuge and a handling arm working over it */}
       <mesh position={[WALL_X - 0.9, FLOOR_Y + 0.5, 2]} material={roomMaterials.cabinetMat} receiveShadow castShadow>
         <boxGeometry args={[1.5, 1, 2.6]} />
       </mesh>
@@ -2120,16 +2472,56 @@ function MoleculeScene() {
         <boxGeometry args={[1.56, 0.05, 2.66]} />
       </mesh>
       <MonitorProp position={[WALL_X - 0.9, FLOOR_Y + 1.05, 1.3]} rotationY={-Math.PI * 0.15} hue="blue" />
+      <Centrifuge position={[WALL_X - 0.95, FLOOR_Y + 1.05, 2.75]} rotationY={-0.5} />
+      <RoboticArm position={[WALL_X - 1.0, FLOOR_Y + 1.05, -0.6]} rotationY={-Math.PI * 0.45} scale={0.85} />
 
-      {/* Scientists at work — stylized entourage figures, not an attempt at realistic people;
-       * placed at a distance the reference photos also keep them at, where the abstraction reads
-       * as "a person" rather than inviting scrutiny. */}
-      <LabFigure position={[-WALL_X + 0.9, FLOOR_Y, -1.4]} rotationY={Math.PI * 0.85} />
-      <LabFigure position={[WALL_X - 0.9, FLOOR_Y, 1.7]} rotationY={-Math.PI * 0.85} hairColor="#1c1712" />
-      <LabFigure position={[-1.6, FLOOR_Y, -4.4]} rotationY={0.6} hairColor="#5a4a34" />
+      {/* Second bench run further back, so the room has depth rather than two islands */}
+      <mesh position={[-WALL_X + 0.9, FLOOR_Y + 0.5, -6.6]} material={roomMaterials.cabinetMat} receiveShadow castShadow>
+        <boxGeometry args={[1.5, 1, 2.4]} />
+      </mesh>
+      <mesh position={[-WALL_X + 0.9, FLOOR_Y + 1.02, -6.6]} material={roomMaterials.counterMat}>
+        <boxGeometry args={[1.56, 0.05, 2.46]} />
+      </mesh>
+      <Centrifuge position={[-WALL_X + 0.95, FLOOR_Y + 1.05, -7.2]} rotationY={0.4} />
+      <MonitorProp position={[-WALL_X + 0.9, FLOOR_Y + 1.05, -6]} rotationY={Math.PI * 0.15} hue="green" />
 
-      {/* Hero molecule — glossy chrome-and-plastic ball-and-stick model, sharp in the foreground */}
-      <group ref={groupRef}>
+      {/* Instrument racks and storage lining the far half of the room */}
+      <ServerRack position={[WALL_X - 0.45, FLOOR_Y, -5.4]} rotationY={-Math.PI / 2} height={2.4} />
+      <ServerRack position={[WALL_X - 0.45, FLOOR_Y, -6.4]} rotationY={-Math.PI / 2} height={2.4} />
+      <ServerRack position={[WALL_X - 0.45, FLOOR_Y, -7.4]} rotationY={-Math.PI / 2} height={2.1} />
+      <TubeCabinet position={[-WALL_X + 0.35, FLOOR_Y, -0.6]} rotationY={Math.PI / 2} />
+      <ControlConsole position={[-3.5, FLOOR_Y, -8.6]} rotationY={0.12} width={1.9} />
+      <ControlConsole position={[3.5, FLOOR_Y, -8.6]} rotationY={-0.12} width={1.9} />
+
+      {/* Scientists at work — stylized entourage figures, not an attempt at realistic people.
+       * They stand clear of the benches now: one was previously placed at the exact centre of the
+       * right-hand bench and rendered half-sunk through the worktop. */}
+      <LabFigure position={[-WALL_X + 2.2, FLOOR_Y, -2.6]} rotationY={Math.PI * 0.62} />
+      <LabFigure position={[WALL_X - 2.3, FLOOR_Y, 2.1]} rotationY={-Math.PI * 0.62} hairColor="#1c1712" />
+      <LabFigure position={[-1.9, FLOOR_Y, -6.2]} rotationY={0.5} hairColor="#5a4a34" />
+
+      {/* Hero molecule, lifted onto a lit plinth and moved off the camera's centre line — the model
+       * used to sit exactly on the flight path, so the camera flew straight into the middle of it
+       * and the frame filled with the black of the central atom. As an exhibit standing beside the
+       * route, it stays readable the whole way past. */}
+      {/* Central island, filling the middle of the room. Safe to put here: the camera tracks 3.2m
+       * above this floor, so anything at bench height passes well beneath it. */}
+      <mesh position={[-0.4, FLOOR_Y + 0.48, -5.6]} material={roomMaterials.cabinetMat} receiveShadow castShadow>
+        <boxGeometry args={[3.6, 0.96, 1.5]} />
+      </mesh>
+      <mesh position={[-0.4, FLOOR_Y + 0.99, -5.6]} material={roomMaterials.counterMat} receiveShadow>
+        <boxGeometry args={[3.7, 0.06, 1.6]} />
+      </mesh>
+      <mesh position={[-0.4, FLOOR_Y + 0.08, -5.6]}>
+        <boxGeometry args={[3.5, 0.04, 1.4]} />
+        <meshStandardMaterial color="#cfeeff" emissive="#4fc8e8" emissiveIntensity={1.5} roughness={0.35} />
+      </mesh>
+      <MonitorProp position={[-1.5, FLOOR_Y + 1.02, -5.9]} rotationY={0.35} hue="green" />
+      <MonitorProp position={[0.5, FLOOR_Y + 1.02, -5.9]} rotationY={-0.3} hue="blue" />
+      <Centrifuge position={[0.9, FLOOR_Y + 1.02, -5.2]} rotationY={0.8} />
+
+      <HoloPlinth position={[2.45, FLOOR_Y, -3.9]} />
+      <group ref={groupRef} position={[2.45, FLOOR_Y + 2.1, -3.9]} scale={0.78}>
         {atoms.map((pos, i) => (
           <Bond key={i} to={pos} material={molMaterials.chrome} />
         ))}
@@ -2145,10 +2537,13 @@ function MoleculeScene() {
         ))}
       </group>
 
-      <hemisphereLight args={["#eef4ff", "#8f9aa3", 0.85]} />
-      <pointLight position={[0, 2, 3]} intensity={10} color="#f2f6ff" />
-      <pointLight position={[-2.5, 1.5, -1]} intensity={6} color="#dfeeff" />
-      <pointLight position={[2.5, 1, 1]} intensity={5} color="#ffffff" />
+      {/* Cool, even facility light: a blue-white sky term over a grey floor bounce, then fills
+       * spaced down the room so the depth stays lit rather than falling off into a dark far end. */}
+      <hemisphereLight args={["#e8f2ff", "#8f9aa3", 0.7]} />
+      <pointLight position={[0, 2.6, 3]} intensity={8} distance={16} decay={1.8} color="#eef6ff" />
+      <pointLight position={[0, 2.6, -3.2]} intensity={7} distance={16} decay={1.8} color="#eef6ff" />
+      <pointLight position={[0, 2.6, -8]} intensity={6} distance={14} decay={1.8} color="#e6f2ff" />
+      <pointLight position={[-2.5, 1.5, -1]} intensity={4} distance={9} decay={2} color="#dfeeff" />
     </group>
   );
 }
@@ -2225,7 +2620,8 @@ function ScentSwirl() {
 
 function HorizonScene() {
   const sceneRef = useRef<THREE.Group>(null);
-  useStationVisibility(sceneRef, STATIONS.horizon, 15);
+  // Widened to 16.5 so it is on screen before the molecule room finishes dissolving at z -60.5.
+  useStationVisibility(sceneRef, STATIONS.horizon, 16.5);
 
   // The bottle turns slowly to show off the glass and the swirl inside — this is the last
   // station, scroll progress caps at 1.0 exactly here, so nothing behind the backdrop plane can

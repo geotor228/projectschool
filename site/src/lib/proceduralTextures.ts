@@ -431,6 +431,146 @@ export function createTileFloorTexture({
   return { map, roughnessMap, normalMap };
 }
 
+type TechPanelOptions = {
+  size?: number;
+  panelsX?: number;
+  panelsY?: number;
+  base?: string;
+  seam?: string;
+  repeat?: [number, number];
+  seed?: number;
+  bolts?: boolean;
+};
+
+/** Brushed light-alloy cladding: large rectangular panels divided by fine recessed seams, with a
+ * faint horizontal brush grain and optional bolt heads at the corners. The wall and floor surface
+ * of a high-spec research facility, where every surface is a manufactured panel rather than paint. */
+export function createTechPanelTexture({
+  size = 1024,
+  panelsX = 4,
+  panelsY = 3,
+  base = "#d5dade",
+  seam = "#9aa4ab",
+  repeat = [1, 1],
+  seed = 9,
+  bolts = true,
+}: TechPanelOptions = {}) {
+  const { canvas, ctx } = makeCanvas(size);
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, size, size);
+
+  const cw = size / panelsX;
+  const ch = size / panelsY;
+  const baseRgb = [1, 3, 5].map((i) => parseInt(base.slice(i, i + 2), 16));
+
+  for (let py = 0; py < panelsY; py++) {
+    for (let px = 0; px < panelsX; px++) {
+      const drift = Math.round((hash(px, py, seed) - 0.5) * 8);
+      ctx.fillStyle = `rgb(${baseRgb[0] + drift},${baseRgb[1] + drift},${baseRgb[2] + drift})`;
+      ctx.fillRect(px * cw, py * ch, cw, ch);
+    }
+  }
+
+  // Brushed grain: long, very low-contrast horizontal streaks.
+  for (let i = 0; i < 260; i++) {
+    const y = hash(i, 1, seed) * size;
+    ctx.globalAlpha = 0.02 + hash(i, 2, seed) * 0.03;
+    ctx.strokeStyle = hash(i, 3, seed) > 0.5 ? "#ffffff" : "#8d979e";
+    ctx.lineWidth = 0.6 + hash(i, 4, seed) * 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(size, y + (hash(i, 5, seed) - 0.5) * 4);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Recessed seams: a fine shadow line with a highlight just under it, the way a real panel gap
+  // catches light. Two hairlines, never one thick dark stroke.
+  ctx.lineWidth = 1.5;
+  for (let px = 0; px <= panelsX; px++) {
+    const x = px * cw;
+    ctx.strokeStyle = seam;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, size);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.beginPath();
+    ctx.moveTo(x + 1.6, 0);
+    ctx.lineTo(x + 1.6, size);
+    ctx.stroke();
+  }
+  for (let py = 0; py <= panelsY; py++) {
+    const y = py * ch;
+    ctx.strokeStyle = seam;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(size, y);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.beginPath();
+    ctx.moveTo(0, y + 1.6);
+    ctx.lineTo(size, y + 1.6);
+    ctx.stroke();
+  }
+
+  if (bolts) {
+    const inset = Math.max(6, cw * 0.05);
+    ctx.fillStyle = "rgba(120,132,140,0.55)";
+    for (let py = 0; py < panelsY; py++) {
+      for (let px = 0; px < panelsX; px++) {
+        for (const [ox, oy] of [
+          [inset, inset],
+          [cw - inset, inset],
+          [inset, ch - inset],
+          [cw - inset, ch - inset],
+        ]) {
+          ctx.beginPath();
+          ctx.arc(px * cw + ox, py * ch + oy, Math.max(1.5, cw * 0.008), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(repeat[0], repeat[1]);
+  map.anisotropy = 8;
+
+  // Panel faces are polished (dark in the roughness map), seams are matte.
+  const rough = makeCanvas(size);
+  rough.ctx.fillStyle = "#5a5a5a";
+  rough.ctx.fillRect(0, 0, size, size);
+  rough.ctx.strokeStyle = "#c4c4c4";
+  rough.ctx.lineWidth = 2.5;
+  for (let px = 0; px <= panelsX; px++) {
+    rough.ctx.beginPath();
+    rough.ctx.moveTo(px * cw, 0);
+    rough.ctx.lineTo(px * cw, size);
+    rough.ctx.stroke();
+  }
+  for (let py = 0; py <= panelsY; py++) {
+    rough.ctx.beginPath();
+    rough.ctx.moveTo(0, py * ch);
+    rough.ctx.lineTo(size, py * ch);
+    rough.ctx.stroke();
+  }
+  speckle(rough.ctx, size, seed + 21, 0.002, "#7a7a7a", [0.04, 0.1]);
+  const roughnessMap = new THREE.CanvasTexture(rough.canvas);
+  roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping;
+  roughnessMap.repeat.set(repeat[0], repeat[1]);
+  roughnessMap.anisotropy = 8;
+
+  const normalMap = new THREE.CanvasTexture(heightToNormalMap(rough.canvas, 0.55));
+  normalMap.wrapS = normalMap.wrapT = THREE.RepeatWrapping;
+  normalMap.repeat.set(repeat[0], repeat[1]);
+  normalMap.anisotropy = 8;
+
+  return { map, roughnessMap, normalMap };
+}
+
 /** Suspended acoustic ceiling tiles: a grid of panels with dark seam lines and a fine speckled
  * texture within each tile, so the ceiling reads as a real office/lab drop-ceiling instead of a
  * flat color fill. */
