@@ -323,9 +323,11 @@ export function createPastelGradientTexture(size = 512) {
 /** Chalkboard slate: near-black green base, soft chalk-dust smudges, faint scratch lines. */
 export function createSlateTexture(size = 512) {
   const { canvas, ctx } = makeCanvas(size);
+  // A real chalkboard green, not near-black — at "#141d18" this read as a flat black square
+  // under normal room lighting, not a slate at all.
   const grad = ctx.createLinearGradient(0, 0, size, size);
-  grad.addColorStop(0, "#141d18");
-  grad.addColorStop(1, "#0d1512");
+  grad.addColorStop(0, "#2f5c40");
+  grad.addColorStop(1, "#1f4530");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, size, size);
 

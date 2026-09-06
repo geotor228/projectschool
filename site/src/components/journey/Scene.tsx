@@ -681,16 +681,35 @@ function ClassroomScene() {
         <boxGeometry args={[0.16, 0.06, 0.09]} />
         <meshStandardMaterial color="#2a2a26" roughness={0.85} />
       </mesh>
-      {/* Chalk molecule sketch + formula — legible chalk text instead of an abstract ring pair */}
-      <mesh position={[-2.4, 4, -5.93]} rotation={[0, 0, 0.2]}>
+      {/* A real lesson written on the board, not a floating logo — title, the molecule of the
+       * day, the actual yield formula the TDR uses, and the terpene family it belongs to. */}
+      <Text position={[-4.6, 5.15, -5.93]} fontSize={0.46} color="#f4f1e4" anchorX="left" anchorY="middle" letterSpacing={0.02}>
+        {"ТЕРПЕНЫ"}
+      </Text>
+      <Text position={[-4.6, 4.55, -5.93]} fontSize={0.19} color="#b9c7b6" anchorX="left" anchorY="middle">
+        {"строительные блоки аромата"}
+      </Text>
+
+      <mesh position={[-3.6, 2.55, -5.93]} rotation={[0, 0, 0.2]}>
         <ringGeometry args={[0.42, 0.46, 6]} />
         <meshBasicMaterial color="#eef1e8" transparent opacity={0.55} side={THREE.DoubleSide} />
       </mesh>
-      <Text position={[-1, 4, -5.93]} fontSize={0.32} color="#eef1e8" anchorX="left" anchorY="middle">
+      <Text position={[-2.55, 2.6, -5.93]} fontSize={0.32} color="#eef1e8" anchorX="left" anchorY="middle">
         {"β-Pineno"}
       </Text>
-      <Text position={[-1, 3.5, -5.93]} fontSize={0.24} color="#c9d0bf" anchorX="left" anchorY="middle">
+      <Text position={[-2.55, 2.1, -5.93]} fontSize={0.24} color="#c9d0bf" anchorX="left" anchorY="middle">
         {"C10H16"}
+      </Text>
+
+      <Text position={[0.2, 2.75, -5.93]} fontSize={0.2} color="#eef1e8" anchorX="left" anchorY="middle">
+        {"Rendiment (%) ="}
+      </Text>
+      <Text position={[0.2, 2.4, -5.93]} fontSize={0.2} color="#eef1e8" anchorX="left" anchorY="middle">
+        {"m(масла) / m(лепестков) × 100"}
+      </Text>
+
+      <Text position={[-4.6, 1.15, -5.93]} fontSize={0.21} color="#b9c7b6" anchorX="left" anchorY="middle" maxWidth={9}>
+        {"Лимонен · Мирцен · Линалоол · Гераниол"}
       </Text>
 
       {/* Teacher's desk, larger, facing the class — pushed back near the board so the camera's
