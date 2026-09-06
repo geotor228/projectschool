@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, ContactShadows, Text } from "@react-three/drei";
+import { Environment, ContactShadows, Text, MeshReflectorMaterial } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
@@ -13,6 +13,8 @@ import {
   createPlasterTexture,
   createAcousticTileTexture,
   createDataScreenTexture,
+  createGlowSpriteTexture,
+  createPastelGradientTexture,
 } from "@/lib/proceduralTextures";
 
 const STATIONS = {
@@ -52,6 +54,12 @@ const PALETTE = {
   oakLight: "#e3cda3",
   oliveChair: "#66754a",
   chalkGreen: "#3c4a3c",
+  // Soft pastel palette for the closing "scent captured in a bottle" scene — warm peach and cool
+  // lavender smoke, cream light, a world away from the noir gold/wine used everywhere else.
+  pastelPeach: "#f3c79b",
+  pastelLavender: "#c6b7ea",
+  pastelPink: "#f0c7d3",
+  pastelCream: "#faf1e3",
 };
 
 /** Camera z/x/y is driven by scroll progress, not the clock, so it stays fine under
@@ -1454,68 +1462,157 @@ function MoleculeScene() {
   );
 }
 
+/** A perfume bottle — rectangular clear glass, a metal collar and cap. The scent isn't sprayed
+ * away, it's held: the closing image for a TDR about capturing aroma. */
+function PerfumeBottle() {
+  const glassMat = useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        color: "#fdf8f2",
+        transmission: 0.95,
+        roughness: 0.03,
+        thickness: 0.5,
+        ior: 1.5,
+        envMapIntensity: 1.1,
+      }),
+    [],
+  );
+  const capMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#d8c4a0", metalness: 0.85, roughness: 0.25 }), []);
+
+  return (
+    <group>
+      <mesh material={glassMat} castShadow>
+        <boxGeometry args={[1.5, 1.9, 0.68]} />
+      </mesh>
+      <mesh position={[0, 1.08, 0]} material={glassMat}>
+        <cylinderGeometry args={[0.15, 0.19, 0.28, 24]} />
+      </mesh>
+      <mesh position={[0, 1.36, 0]} material={capMat} castShadow>
+        <cylinderGeometry args={[0.165, 0.165, 0.32, 24]} />
+      </mesh>
+      <mesh position={[0, 1.53, 0]} material={capMat}>
+        <sphereGeometry args={[0.165, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Two intertwined ribbons of colored "smoke" — the captured scent, swirling inside the glass.
+ * A CatmullRom curve run through a TubeGeometry, additive-blended so the strands glow and
+ * overlap softly instead of reading as solid colored rope. */
+function ScentSwirl() {
+  const geometry1 = useMemo(() => {
+    const pts = Array.from({ length: 22 }, (_, i) => {
+      const t = i / 21;
+      return new THREE.Vector3(Math.sin(t * Math.PI * 2.4) * 0.32, -0.75 + t * 1.55, Math.cos(t * Math.PI * 2.4) * 0.14);
+    });
+    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 80, 0.085, 10, false);
+  }, []);
+  const geometry2 = useMemo(() => {
+    const pts = Array.from({ length: 22 }, (_, i) => {
+      const t = i / 21;
+      return new THREE.Vector3(
+        Math.sin(t * Math.PI * 2.4 + Math.PI * 0.55) * 0.28,
+        -0.7 + t * 1.5,
+        Math.cos(t * Math.PI * 2.4 + Math.PI * 0.55) * 0.17,
+      );
+    });
+    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 80, 0.065, 10, false);
+  }, []);
+
+  return (
+    <group>
+      <mesh geometry={geometry1}>
+        <meshBasicMaterial color={PALETTE.pastelPeach} transparent opacity={0.55} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh geometry={geometry2}>
+        <meshBasicMaterial color={PALETTE.pastelLavender} transparent opacity={0.5} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
 function HorizonScene() {
   const sceneRef = useRef<THREE.Group>(null);
   useStationVisibility(sceneRef, STATIONS.horizon, 15);
 
+  // The bottle turns slowly to show off the glass and the swirl inside — this is the last
+  // station, scroll progress caps at 1.0 exactly here, so nothing behind the backdrop plane can
+  // ever be reached; unlike every earlier scene, a flat backdrop facing the camera is safe.
   const groupRef = useRef<THREE.Group>(null);
   useFrame((state) => {
     if (groupRef.current && !prefersReducedMotion) {
-      groupRef.current.rotation.z = state.clock.elapsedTime * 0.03;
+      groupRef.current.rotation.y = state.clock.elapsedTime * 0.12;
     }
   });
 
-  const motes = useMemo(() => {
-    const count = 90;
-    const arr = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const r = 1.5 + Math.random() * 5;
-      arr[i * 3] = Math.cos(a) * r;
-      arr[i * 3 + 1] = (Math.random() - 0.5) * 4;
-      arr[i * 3 + 2] = Math.sin(a) * r;
-    }
-    return arr;
-  }, []);
+  const backdrop = useMemo(() => createPastelGradientTexture(512), []);
 
-  const rings = [
-    { radius: 2.2, opacity: 0.55 },
-    { radius: 3, opacity: 0.4 },
-    { radius: 3.9, opacity: 0.22 },
-  ];
+  const sparkles = useMemo(() => {
+    const count = 140;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const palette = [PALETTE.pastelPeach, PALETTE.pastelLavender, PALETTE.pastelPink, PALETTE.pastelCream].map(
+      (c) => new THREE.Color(c),
+    );
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = (seededJitter(i, 700) - 0.5) * 20;
+      positions[i * 3 + 1] = (seededJitter(i, 701) - 0.5) * 9;
+      positions[i * 3 + 2] = -1 - seededJitter(i, 702) * 6;
+      const c = palette[i % palette.length];
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+    }
+    return { positions, colors };
+  }, []);
+  const sparkleMap = useMemo(() => createGlowSpriteTexture(128), []);
 
   return (
     <group ref={sceneRef} position={[0, 0, STATIONS.horizon]}>
-      <LightBeam position={[0, 5, -3]} rotation={[Math.PI, 0, 0]} length={12} radius={2.4} opacity={0.15} />
-      <pointLight position={[0, 2, -5]} intensity={20} color={PALETTE.primary} />
-      <pointLight position={[0, 0, 2]} intensity={10} color={PALETTE.accent} />
+      {/* Soft pastel studio backdrop — a dome surrounding the whole scene, not a flat panel, so
+       * there's no edge for the camera's scroll-driven sway to swing past into black void the
+       * way even a wide flat panel eventually allows. */}
+      <mesh position={[0, 0.3, 0]}>
+        <sphereGeometry args={[22, 32, 32]} />
+        <meshBasicMaterial map={backdrop} toneMapped={false} side={THREE.BackSide} />
+      </mesh>
 
-      {/* Soft glowing core — the open, unfinished center of the story */}
-      <mesh>
-        <sphereGeometry args={[0.5, 32, 32]} />
-        <meshStandardMaterial
-          color={PALETTE.accent}
-          emissive={PALETTE.accent}
-          emissiveIntensity={0.6}
-          roughness={0.3}
+      {/* Drifting bokeh — soft round sparkles in the same warm/cool pastel pair as the smoke inside */}
+      <points>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[sparkles.positions, 3]} />
+          <bufferAttribute attach="attributes-color" args={[sparkles.colors, 3]} />
+        </bufferGeometry>
+        <pointsMaterial size={0.5} map={sparkleMap} vertexColors transparent opacity={0.8} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+      </points>
+
+      {/* Reflective tabletop the bottle stands on, like the reference photo's glossy surface */}
+      <mesh position={[0, -1.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[10, 8]} />
+        <MeshReflectorMaterial
+          blur={[300, 80]}
+          resolution={512}
+          mixBlur={0.6}
+          mixStrength={8}
+          roughness={0.75}
+          depthScale={1}
+          minDepthThreshold={0.85}
+          color="#ddd0c2"
+          metalness={0.15}
         />
       </mesh>
 
-      <group ref={groupRef}>
-        {rings.map((ring, i) => (
-          <mesh key={i} rotation={[0, 0, (i * Math.PI) / 6]}>
-            <ringGeometry args={[ring.radius, ring.radius + 0.03, 64]} />
-            <meshBasicMaterial color={PALETTE.accent} transparent opacity={ring.opacity} side={THREE.DoubleSide} />
-          </mesh>
-        ))}
+      {/* The bottle, offset off the centered closing text card so the two don't fight for the eye */}
+      <group ref={groupRef} position={[2.4, -0.05, 0]}>
+        <PerfumeBottle />
+        <ScentSwirl />
       </group>
 
-      <points>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[motes, 3]} />
-        </bufferGeometry>
-        <pointsMaterial size={0.07} color={PALETTE.primary} transparent opacity={0.6} />
-      </points>
+      <hemisphereLight args={["#fff3e6", "#cdb8d8", 0.55]} />
+      <pointLight position={[2, 2, 3]} intensity={4.5} color="#fff0dd" />
+      <pointLight position={[-2, 1.5, 1]} intensity={3} color="#e6d6f5" />
+      <pointLight position={[3, 0.5, -1]} intensity={2.5} color="#ffe6d2" />
     </group>
   );
 }

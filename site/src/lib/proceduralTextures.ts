@@ -234,6 +234,48 @@ export function createDataScreenTexture(size = 256, hue: "blue" | "green" = "blu
   return map;
 }
 
+/** A soft radial-gradient disc — white center fading to transparent — used as a point-sprite map
+ * so particles render as soft glowing circles (bokeh) instead of hard-edged squares. */
+export function createGlowSpriteTexture(size = 128) {
+  const { canvas, ctx } = makeCanvas(size);
+  const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  grad.addColorStop(0, "rgba(255,255,255,1)");
+  grad.addColorStop(0.4, "rgba(255,255,255,0.5)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+  const map = new THREE.CanvasTexture(canvas);
+  return map;
+}
+
+/** A soft pastel gradient backdrop — peach through pink to lavender, with a few softly glowing
+ * blobs baked in — for the closing scene's dreamy studio-photo background. */
+export function createPastelGradientTexture(size = 512) {
+  const { canvas, ctx } = makeCanvas(size);
+  const grad = ctx.createLinearGradient(0, 0, size, size);
+  grad.addColorStop(0, "#fbead9");
+  grad.addColorStop(0.35, "#f6d9c9");
+  grad.addColorStop(0.65, "#ecd2e2");
+  grad.addColorStop(1, "#cdc0ea");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+
+  for (let i = 0; i < 7; i++) {
+    const x = hash(i, 200, 80) * size;
+    const y = hash(i, 201, 81) * size;
+    const r = 70 + hash(i, 202, 82) * 170;
+    const g2 = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g2.addColorStop(0, "rgba(255,255,255,0.4)");
+    g2.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g2;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  return map;
+}
+
 /** Chalkboard slate: near-black green base, soft chalk-dust smudges, faint scratch lines. */
 export function createSlateTexture(size = 512) {
   const { canvas, ctx } = makeCanvas(size);
