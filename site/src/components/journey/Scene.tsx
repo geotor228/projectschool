@@ -466,14 +466,64 @@ function MoleculeScene() {
 }
 
 function HorizonScene() {
+  const groupRef = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    if (groupRef.current && !prefersReducedMotion) {
+      groupRef.current.rotation.z = state.clock.elapsedTime * 0.03;
+    }
+  });
+
+  const motes = useMemo(() => {
+    const count = 90;
+    const arr = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 1.5 + Math.random() * 5;
+      arr[i * 3] = Math.cos(a) * r;
+      arr[i * 3 + 1] = (Math.random() - 0.5) * 4;
+      arr[i * 3 + 2] = Math.sin(a) * r;
+    }
+    return arr;
+  }, []);
+
+  const rings = [
+    { radius: 2.2, opacity: 0.55 },
+    { radius: 3, opacity: 0.4 },
+    { radius: 3.9, opacity: 0.22 },
+  ];
+
   return (
     <group position={[0, 0, STATIONS.horizon]}>
       <LightBeam position={[0, 5, -3]} rotation={[Math.PI, 0, 0]} length={12} radius={2.4} opacity={0.15} />
       <pointLight position={[0, 2, -5]} intensity={20} color={PALETTE.primary} />
+      <pointLight position={[0, 0, 2]} intensity={10} color={PALETTE.accent} />
+
+      {/* Soft glowing core — the open, unfinished center of the story */}
       <mesh>
-        <ringGeometry args={[3, 3.05, 64]} />
-        <meshBasicMaterial color={PALETTE.accent} transparent opacity={0.45} side={THREE.DoubleSide} />
+        <sphereGeometry args={[0.5, 32, 32]} />
+        <meshStandardMaterial
+          color={PALETTE.accent}
+          emissive={PALETTE.accent}
+          emissiveIntensity={0.6}
+          roughness={0.3}
+        />
       </mesh>
+
+      <group ref={groupRef}>
+        {rings.map((ring, i) => (
+          <mesh key={i} rotation={[0, 0, (i * Math.PI) / 6]}>
+            <ringGeometry args={[ring.radius, ring.radius + 0.03, 64]} />
+            <meshBasicMaterial color={PALETTE.accent} transparent opacity={ring.opacity} side={THREE.DoubleSide} />
+          </mesh>
+        ))}
+      </group>
+
+      <points>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[motes, 3]} />
+        </bufferGeometry>
+        <pointsMaterial size={0.07} color={PALETTE.primary} transparent opacity={0.6} />
+      </points>
     </group>
   );
 }
