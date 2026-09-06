@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, ContactShadows, Text, MeshReflectorMaterial, RoundedBox, Instances, Instance } from "@react-three/drei";
+import { Environment, ContactShadows, Text, RoundedBox, Instances, Instance } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
@@ -19,7 +19,7 @@ import {
   createAcousticTileTexture,
   createDataScreenTexture,
   createGlowSpriteTexture,
-  createPastelGradientTexture,
+  createVignetteTexture,
 } from "@/lib/proceduralTextures";
 
 const STATIONS = {
@@ -2554,21 +2554,64 @@ function PerfumeBottle() {
   const glassMat = useMemo(
     () =>
       new THREE.MeshPhysicalMaterial({
-        color: "#fdf8f2",
-        transmission: 0.95,
-        roughness: 0.03,
-        thickness: 0.5,
+        color: "#eaf2ea",
+        // Against a dark forest a fully transmissive bottle simply vanishes — there is nothing
+        // bright behind it to refract. Pulling transmission back and thickening the glass gives it
+        // a body of its own, and the clearcoat keeps a bright rim along every edge.
+        transmission: 0.72,
+        roughness: 0.04,
+        thickness: 0.9,
         ior: 1.5,
-        envMapIntensity: 1.1,
+        envMapIntensity: 1.6,
+        // A faint sheen on the glass itself so the bottle keeps an edge against a busy forest
+        // background — pure transmission with nothing else reads as a hole in the image.
+        clearcoat: 1,
+        clearcoatRoughness: 0.04,
       }),
     [],
   );
   const capMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#d8c4a0", metalness: 0.85, roughness: 0.25 }), []);
+  // The oil itself. This is the point of the whole project, so it gets a real body with a real
+  // surface rather than being implied by the smoke alone: a filled volume in the bottom third of
+  // the bottle, its own meniscus, and enough colour saturation to read through the glass.
+  const oilMat = useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        color: "#f0b95e",
+        transmission: 0.32,
+        roughness: 0.06,
+        thickness: 0.8,
+        ior: 1.44,
+        attenuationColor: new THREE.Color("#d08a2c"),
+        attenuationDistance: 0.8,
+        emissive: new THREE.Color("#e09a34"),
+        emissiveIntensity: 0.75,
+        envMapIntensity: 1.2,
+      }),
+    [],
+  );
 
   return (
     <group>
       <mesh material={glassMat} castShadow>
         <boxGeometry args={[1.5, 1.9, 0.68]} />
+      </mesh>
+      {/* Oil body, inset from the glass walls so there's a visible layer of glass around it */}
+      <mesh position={[0, -0.53, 0]} material={oilMat}>
+        <boxGeometry args={[1.38, 0.78, 0.56]} />
+      </mesh>
+      {/* Meniscus: a brighter, flatter top face makes the fill level unmistakable */}
+      <mesh position={[0, -0.142, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[1.38, 0.56]} />
+        <meshPhysicalMaterial
+          color="#f6cd86"
+          roughness={0.05}
+          metalness={0.15}
+          transparent
+          opacity={0.85}
+          side={THREE.DoubleSide}
+          envMapIntensity={1.4}
+        />
       </mesh>
       <mesh position={[0, 1.08, 0]} material={glassMat}>
         <cylinderGeometry args={[0.15, 0.19, 0.28, 24]} />
@@ -2579,6 +2622,48 @@ function PerfumeBottle() {
       <mesh position={[0, 1.53, 0]} material={capMat}>
         <sphereGeometry args={[0.165, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
       </mesh>
+    </group>
+  );
+}
+
+/** A weathered, moss-topped boulder for the bottle to stand on in the wood — the closing image is
+ * a bottle set down on a rock among the bluebells, not a product on a studio plinth. Built from a
+ * low-poly icosahedron with its vertices pushed around, so it reads as stone rather than a ball. */
+function MossyRock({ position, scale = 1 }: { position: THREE.Vector3Tuple; scale?: number }) {
+  const geometry = useMemo(() => {
+    const geo = new THREE.IcosahedronGeometry(1, 3);
+    const pos = geo.attributes.position;
+    const v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const n = seededJitter(i, 820) - 0.5;
+      const m = seededJitter(i, 821) - 0.5;
+      v.multiplyScalar(1 + n * 0.22);
+      // Flatten the top and squash the whole thing so it sits like a boulder, not a sphere.
+      v.y *= 0.34;
+      v.x *= 1 + m * 0.12;
+      pos.setXYZ(i, v.x, v.y, v.z);
+    }
+    geo.computeVertexNormals();
+    return geo;
+  }, []);
+
+  const stoneMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#41443d", roughness: 1, envMapIntensity: 0.06, flatShading: false }),
+    [],
+  );
+  // Moss is deliberately not flat-shaded and barely reflective. Faceted, saturated green over the
+  // whole boulder turned it into a cut emerald; it has to be a dull growth on the crown only.
+  const mossMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#333e28", roughness: 1, envMapIntensity: 0.04 }),
+    [],
+  );
+
+  return (
+    <group position={position} scale={scale}>
+      <mesh geometry={geometry} material={stoneMat} castShadow receiveShadow />
+      {/* Moss cap: squashed flat and raised, so it only shows across the top of the stone */}
+      <mesh geometry={geometry} material={mossMat} scale={[0.84, 0.42, 0.84]} position={[0, 0.14, 0]} receiveShadow />
     </group>
   );
 }
@@ -2609,10 +2694,10 @@ function ScentSwirl() {
   return (
     <group>
       <mesh geometry={geometry1}>
-        <meshBasicMaterial color={PALETTE.pastelPeach} transparent opacity={0.55} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#ffd9a3" transparent opacity={0.8} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
       <mesh geometry={geometry2}>
-        <meshBasicMaterial color={PALETTE.pastelLavender} transparent opacity={0.5} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#d9c2ff" transparent opacity={0.7} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
@@ -2633,7 +2718,15 @@ function HorizonScene() {
     }
   });
 
-  const backdrop = useMemo(() => createPastelGradientTexture(512), []);
+  // The forest photograph, loaded once. useLoader would suspend the whole Canvas, so this loads
+  // imperatively and simply pops in when ready — the backdrop starts on its fallback colour.
+  const vignette = useMemo(() => createVignetteTexture(512), []);
+  const forest = useMemo(() => {
+    const tex = new THREE.TextureLoader().load("/textures/forest-bluebells-hero.jpg");
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    return tex;
+  }, []);
 
   const sparkles = useMemo(() => {
     const count = 140;
@@ -2657,12 +2750,32 @@ function HorizonScene() {
 
   return (
     <group ref={sceneRef} position={[0, 0, STATIONS.horizon]}>
-      {/* Soft pastel studio backdrop — a dome surrounding the whole scene, not a flat panel, so
-       * there's no edge for the camera's scroll-driven sway to swing past into black void the
-       * way even a wide flat panel eventually allows. */}
+      {/* Enclosing dome in deep forest green. It is no longer the picture itself — it's the colour
+       * behind the picture, so that if the camera's sway ever swings past the edge of the photo
+       * plane it finds woodland shadow rather than black void. */}
       <mesh position={[0, 0.3, 0]}>
-        <sphereGeometry args={[22, 32, 32]} />
-        <meshBasicMaterial map={backdrop} toneMapped={false} side={THREE.BackSide} />
+        <sphereGeometry args={[22, 24, 24]} />
+        <meshBasicMaterial color="#1d2a1c" toneMapped={false} side={THREE.BackSide} />
+      </mesh>
+
+      {/* The forest itself: one large plane carrying the photograph, sized on the image's own
+       * 3:2 aspect so nothing is stretched, and set far enough back that it fills the frame from
+       * the moment this scene fades in right through to where the scroll ends. */}
+      <mesh position={[0, 2.4, -12]}>
+        <planeGeometry args={[46, 30.7]} />
+        <meshBasicMaterial map={forest} toneMapped={false} />
+      </mesh>
+      {/* Vignette panel in front of the photo: transparent in the middle, darkening toward the
+       * edges, so the closing text card keeps its contrast against a bright, busy image. */}
+      <mesh position={[0, 2.4, -11.6]}>
+        <planeGeometry args={[46, 30.7]} />
+        <meshBasicMaterial
+          map={vignette}
+          transparent
+          opacity={0.85}
+          depthWrite={false}
+          toneMapped={false}
+        />
       </mesh>
 
       {/* Drifting bokeh — soft round sparkles in the same warm/cool pastel pair as the smoke inside */}
@@ -2671,35 +2784,34 @@ function HorizonScene() {
           <bufferAttribute attach="attributes-position" args={[sparkles.positions, 3]} />
           <bufferAttribute attach="attributes-color" args={[sparkles.colors, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.5} map={sparkleMap} vertexColors transparent opacity={0.8} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        {/* Smaller and fainter than in the studio version: against a photograph these read as
+         * pollen drifting in the light, where big bright orbs read as lens dirt. */}
+        <pointsMaterial size={0.22} map={sparkleMap} vertexColors transparent opacity={0.45} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
 
-      {/* Reflective tabletop the bottle stands on, like the reference photo's glossy surface */}
-      <mesh position={[0, -1.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[10, 8]} />
-        <MeshReflectorMaterial
-          blur={[300, 80]}
-          resolution={512}
-          mixBlur={0.6}
-          mixStrength={8}
-          roughness={0.75}
-          depthScale={1}
-          minDepthThreshold={0.85}
-          color="#ddd0c2"
-          metalness={0.15}
-        />
-      </mesh>
-
-      {/* The bottle, offset off the centered closing text card so the two don't fight for the eye */}
-      <group ref={groupRef} position={[2.4, -0.05, 0]}>
+      {/* No 3D ground. The photograph already carries a forest floor of bluebells, and a separate
+       * plane in front of it read as exactly what it was — a flat slab laid over the picture. The
+       * boulder is instead set low enough that its base falls below the bottom of frame, so the
+       * picture's own foreground reads as the ground it is bedded into. */}
+      <MossyRock position={[2.4, -1.42, -5]} scale={1.35} />
+      <group ref={groupRef} position={[2.4, -0.44, -5]} scale={0.95}>
         <PerfumeBottle />
         <ScentSwirl />
       </group>
+      {/* Contact shadow tight under the bottle, grounding it on the stone */}
+      <ContactShadows position={[2.4, -1.18, -5]} opacity={0.45} scale={2.2} blur={1.8} far={1} resolution={512} color="#12160e" />
 
-      <hemisphereLight args={["#fff3e6", "#cdb8d8", 0.55]} />
-      <pointLight position={[2, 2, 3]} intensity={4.5} color="#fff0dd" />
-      <pointLight position={[-2, 1.5, 1]} intensity={3} color="#e6d6f5" />
-      <pointLight position={[3, 0.5, -1]} intensity={2.5} color="#ffe6d2" />
+      {/* Woodland light: warm sun raking in from the left, matching the sunburst in the photograph,
+       * over a cool shade fill. Nothing bright enough to blow the glass out against the picture. */}
+      <hemisphereLight args={["#dfeacd", "#2b3324", 0.7]} />
+      <directionalLight position={[-6, 5, 3]} intensity={2.2} color="#ffe9c2" castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0005} />
+      <pointLight position={[3.4, 1.6, 2.2]} intensity={5} distance={9} decay={2} color="#ffeccd" />
+      <pointLight position={[1.2, 0.6, 1.6]} intensity={2.4} distance={5} decay={2} color="#cfd6ff" />
+      {/* Rim light behind and above the bottle. Glass only reads where something bright sits behind
+       * it to refract; without this the bottle is a hole in the plate no matter how the material
+       * is tuned. Tight distance so it lights the bottle and not the whole photograph. */}
+      <pointLight position={[3.3, 1.1, -6.6]} intensity={7} distance={4.5} decay={2} color="#fff3d8" />
+      <pointLight position={[1.5, 0.2, -4.2]} intensity={3} distance={3} decay={2} color="#ffd9a0" />
     </group>
   );
 }

@@ -241,6 +241,8 @@ Quan dos líquids que no es barregen (aigua i oli) bullen junts, cadascun genera
 
 El sistema bull quan aquesta pressió total iguala la pressió atmosfèrica. Com que se sumen les dues pressions parcials, la mescla bull a una temperatura *inferior* a la de cadascun dels components per separat. El limonè pur bull a 176°C, però amb vapor d'aigua es pot arrossegar a una temperatura molt propera als 100°C —gairebé 80°C menys, cosa que evita que es faci malbé per la calor. El mateix val per als alcohols de la rosa (geraniol 230°C, citronel·lol 225°C).
 
+Per posar-hi un número concret: si a una temperatura donada l'aigua sola ja fes una pressió de vapor pràcticament igual a l'atmosfèrica (com passa a 100°C, al nivell del mar), qualsevol pressió addicional que aporti el compost aromàtic —per petita que sigui— ja fa que la suma superi la pressió atmosfèrica abans d'arribar als 100°C. És per això que, a la pràctica, una mescla d'aigua i oli essencial sol començar a bullir a una temperatura lleugerament per sota del punt d'ebullició normal de l'aigua pura, i no pas per sobre.
+
 Per a mescles miscibles (que no és el nostre cas, però val la pena esmentar-ho) el fenomen equivalent es descriu amb la llei de Raoult, on la pressió de vapor de cada component és proporcional a la seva fracció molar dins la dissolució.
 
 ### 6.5 Què n'obtens, al final
@@ -269,6 +271,8 @@ La UAHD parteix del mateix principi (arrossegament amb vapor), però hi afegeix 
 #### 6.7.2 Què li passa, exactament, al teixit vegetal
 
 Aquestes microforces trenquen les glàndules oleíferes, els tricomes o les cèl·lules secretores, i alliberen l'oli directament cap a l'aigua, en lloc que hagi de difondre's lentament a través de parets cel·lulars intactes com passa en el mètode convencional. A la pràctica, això es tradueix en una extracció més ràpida i, sovint, més completa.
+
+Una manera senzilla de visualitzar-ho: en el mètode convencional, l'oli ha de "trobar el camí de sortida" travessant capes de cèl·lules intactes, una mica com l'aigua filtrant-se lentament a través de terra compactada. Amb la cavitació, en canvi, és com si s'obrissin milers de petits forats directament allà on hi ha l'oli emmagatzemat, de manera que ja no cal que difongui tanta distància abans d'arribar a l'aigua que l'arrossegarà cap al condensador.
 
 #### 6.7.3 El que diu la literatura (i el que no diu)
 
@@ -373,6 +377,8 @@ Són substàncies —normalment molècules grans i poc volàtils— que frenen l
 
 La International Fragrance Association (IFRA) posa límits a la concentració de certs compostos aromàtics segons el seu potencial al·lergen. És un recordatori que, més enllà del rendiment d'extracció, qualsevol ús pràctic d'un oli essencial hauria de tenir en compte també la seguretat.
 
+Aplicat al meu cas concret: encara que aconseguís un rendiment excel·lent amb la UAHD, l'oli que obtingui en aquest treball és, sobretot, una mostra experimental per mesurar-ne el volum, no un producte cosmètic acabat. Si algun dia es volgués fer servir en un context real (un perfum, una crema), caldria primer analitzar-ne la composició exacta i comprovar que compleix aquest tipus de límits de seguretat —un pas que queda clarament fora de l'abast d'aquest treball.
+
 ### 9.6 I això, per a què em serveix a mi
 
 L'oli que obtingui (convencional o per UAHD) es podria fer servir directament com a nota de cor en un perfum. És, potser, l'aplicació més "real" de tot el que explico en aquest treball.
@@ -432,6 +438,8 @@ Per a cada condició calcularé la mitjana i la desviació estàndard del rendim
 
 Amb un mínim de 3 repeticions podré representar el rendiment mitjà amb barres d'error, per veure si la diferència entre mètodes és gran comparada amb la variabilitat interna de cada grup. Si tinc prou repeticions, m'agradaria complementar-ho amb una prova t de Student per veure si la diferència és estadísticament significativa o podria ser deguda a l'atzar —encara que això ho deixo com una possible ampliació, segons el temps que tingui.
 
+Dic això perquè és un error que es veu sovint (i que jo mateix hauria pogut cometre si no ho hagués repassat bé): no n'hi ha prou de mirar si la mitjana d'un grup és més alta que la de l'altre. Si la variabilitat dins de cada grup (la desviació estàndard) és gran, una diferència de mitjanes que sembla important podria no voler dir gaire —podria ser, simplement, atzar. Per això les barres d'error i, idealment, la prova estadística són tan importants: em permeten dir "la UAHD dona més rendiment" amb una mica més de confiança, i no només perquè el número final sigui més gran a simple vista.
+
 **Plantilla de dades (a omplir):**
 
 | Condició | Repetició | Massa pètals (g) | Volum d'oli (mL) | Temps (min) | Rendiment (%) |
@@ -485,6 +493,8 @@ Si no es confirma —o només es confirma en part, per exemple en el temps però
 
 Com a línies de futur, m'agradaria: (a) repetir l'experiment amb un equip d'ultrasons més potent, per aïllar l'efecte real de la potència; (b) fer una anàlisi per GC-MS per comparar la composició exacta, no només el rendiment total; i (c) provar-ho amb altres espècies florals, per veure en quines condicions químiques la UAHD aporta més avantatge.
 
+Rellegint tot el que he escrit fins ara, m'adono que aquest treball m'ha canviat una mica la manera de mirar coses tan quotidianes com l'olor d'una flor o d'una taronja pelada. Abans de començar, això m'hauria semblat una qüestió purament "estètica"; ara hi veig una cadena sencera de fenòmens físics i químics —volatilitat, pressió de vapor, cavitació, receptors amb forma de pany— que expliquen per què passa. Sigui quin sigui el resultat final de l'experiment, crec que això ja és, per a mi, un resultat en si mateix.
+
 ## 12. Webgrafia
 
 **Fonts primàries verificades directament (autor/any/DOI confirmats):**
@@ -513,10 +523,12 @@ Com a línies de futur, m'agradaria: (a) repetir l'experiment amb un equip d'ult
 - Rosa damascena5.jpg. Autor: Kurt Stüber. CC BY-SA 3.0. Wikimedia Commons.
 - Hydrodistillation using the Clevenger-type apparatus. Autors: N. Sadgrove i G. Jones (2015), *Agriculture*, 5(1), 48-102. CC BY 4.0. Wikimedia Commons.
 - Ultrasonic cleaner copy.jpg. Autor: William Rafti. Llicència d'atribució. Wikimedia Commons.
+- Orange cross section.jpg. Autor: Elkagye. CC BY-SA 3.0. Wikimedia Commons.
+- Perfume Bottles.JPG. Autora: Angela Andriot. CC BY-SA 3.0. Wikimedia Commons.
 - Estructures moleculars del limonè, geraniol i citronel·lol: PubChem, National Library of Medicine (NIH), ús lliure amb atribució.
 - Vídeo "Essential oil extraction | Clevenger Apparatus | Hydro distillation | Ginger oil content | Experiment". Autor: AGRI LEARN with Anuj. YouTube. https://www.youtube.com/watch?v=s_KuvXXvgX4
 - Vídeo "Cavitation - Easily explained!". Autor: IET Institute for Energy Technology. YouTube. https://www.youtube.com/watch?v=U-uUYCFDTrc
-- Esquemes propis (línia del temps, procés olfactiu, cavitació, biosíntesi MVA/MEP, piràmide olfactiva): elaboració pròpia per a aquest treball.
+- Esquemes propis (línia del temps, procés olfactiu, cavitació, biosíntesi MVA/MEP, piràmide olfactiva, disseny experimental): elaboració pròpia per a aquest treball.
 
 **Fonts generals (context, no citades per a dades quantitatives):**
 
@@ -526,10 +538,15 @@ Com a línies de futur, m'agradaria: (a) repetir l'experiment amb un equip d'ult
 
 ## Annex I: Glossari
 
+- **Albedo** — capa blanca i esponjosa de la pell dels cítrics, sota el flavedo, amb pràcticament gens d'oli essencial.
+- **Anòsmia** — incapacitat (total o parcial, general o específica d'una molècula) de detectar olors.
 - **Cavitació acústica** — formació, creixement i col·lapse violent de microbombolles en un líquid amb ultrasons.
 - **COV** — compost orgànic volàtil.
+- **Desviació estàndard** — mesura de com de dispersos estan els valors d'un conjunt de dades respecte a la seva mitjana.
 - **Enantiòmer** — cadascuna de les dues formes especulars d'una molècula.
-- **Flavedo** — capa exterior i acolorida de la pell dels cítrics.
+- **Epiteli olfactiu** — teixit a la part alta de la cavitat nasal on hi ha les neurones receptores de l'olfacte.
+- **Flavedo** — capa exterior i acolorida de la pell dels cítrics, amb les glàndules oleíferes.
+- **GC-MS** — cromatografia de gasos amb espectrometria de masses; tècnica per separar i identificar compostos volàtils.
 - **Hidrolat** — fase aquosa subproducte de la hidrodestil·lació.
 - **Monoterpè** — terpè de dues unitats d'isoprè (C₁₀).
 - **Rendiment (d'extracció)** — % en massa d'oli obtingut respecte al material vegetal de partida.

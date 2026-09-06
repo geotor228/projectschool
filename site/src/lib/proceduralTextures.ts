@@ -979,6 +979,22 @@ export function createLabDiagramTexture(kind: DiagramKind, width = 640) {
   return { map, aspect: width / height };
 }
 
+/** A soft vignette: clear through the middle, darkening toward the edges. Laid over a photographic
+ * backdrop it pulls the corners down so overlaid text keeps its contrast, without flattening the
+ * middle of the picture. */
+export function createVignetteTexture(size = 512, color = "10,16,10", strength = 0.82) {
+  const { canvas, ctx } = makeCanvas(size);
+  const grad = ctx.createRadialGradient(size / 2, size / 2, size * 0.12, size / 2, size / 2, size * 0.72);
+  grad.addColorStop(0, `rgba(${color},0)`);
+  grad.addColorStop(0.55, `rgba(${color},${strength * 0.25})`);
+  grad.addColorStop(1, `rgba(${color},${strength})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  return map;
+}
+
 /** Chalkboard slate: near-black green base, soft chalk-dust smudges, faint scratch lines. */
 export function createSlateTexture(size = 512) {
   const { canvas, ctx } = makeCanvas(size);
