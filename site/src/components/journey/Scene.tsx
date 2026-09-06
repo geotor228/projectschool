@@ -703,6 +703,55 @@ function ClassroomScene() {
         <mesh position={[0.95, 0.25, 0]} material={materials.metalMat}>
           <boxGeometry args={[0.08, 0.5, 0.85]} />
         </mesh>
+
+        {/* Stack of papers + a couple of books — an empty desk reads as a stage prop */}
+        <mesh position={[0.6, 0.545, 0.15]} rotation={[0, 0.15, 0]} castShadow>
+          <boxGeometry args={[0.22, 0.03, 0.28]} />
+          <meshStandardMaterial color="#f4f1e6" roughness={0.7} />
+        </mesh>
+        <mesh position={[0.62, 0.575, 0.14]} rotation={[0, -0.08, 0]} castShadow>
+          <boxGeometry args={[0.19, 0.035, 0.25]} />
+          <meshStandardMaterial color="#dfe0d8" roughness={0.7} />
+        </mesh>
+        <mesh position={[-0.65, 0.555, -0.1]} rotation={[0, -0.1, 0]} castShadow>
+          <boxGeometry args={[0.16, 0.045, 0.22]} />
+          <meshStandardMaterial color={PALETTE.secondary} roughness={0.6} />
+        </mesh>
+
+        {/* Small desk lamp */}
+        <group position={[-0.75, 0.54, 0.25]}>
+          <mesh castShadow>
+            <cylinderGeometry args={[0.06, 0.07, 0.02, 16]} />
+            <meshStandardMaterial color="#2a2b26" roughness={0.4} metalness={0.3} />
+          </mesh>
+          <mesh position={[0, 0.18, 0]} rotation={[0, 0, 0.3]} castShadow>
+            <cylinderGeometry args={[0.012, 0.012, 0.36, 8]} />
+            <meshStandardMaterial color="#2a2b26" roughness={0.4} metalness={0.3} />
+          </mesh>
+          <mesh position={[0.1, 0.34, 0]} rotation={[0, 0, 1.1]} castShadow>
+            <coneGeometry args={[0.09, 0.13, 16, 1, true]} />
+            <meshStandardMaterial color="#2a2b26" roughness={0.4} metalness={0.3} side={THREE.DoubleSide} />
+          </mesh>
+          <pointLight position={[0.16, 0.3, 0]} intensity={1.5} distance={1.5} color="#ffdfa8" />
+        </group>
+
+        {/* Teacher's chair, tucked in on the board side of the desk facing the class */}
+        <group position={[0, 0, -0.75]}>
+          <mesh position={[0, 0.44, 0]} scale={[0.6, 0.15, 0.55]} material={materials.chairMat} castShadow>
+            <sphereGeometry args={[0.5, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
+          </mesh>
+          <RoundedBox args={[0.52, 0.5, 0.055]} radius={0.03} smoothness={2} position={[0, 0.68, -0.24]} rotation={[0.22, 0, 0]} material={materials.chairMat} castShadow />
+          {[
+            [-0.22, 0.22, 0.18],
+            [0.22, 0.22, 0.18],
+            [-0.2, 0.34, -0.2],
+            [0.2, 0.34, -0.2],
+          ].map((p, i) => (
+            <mesh key={i} position={p as THREE.Vector3Tuple} material={materials.metalMat}>
+              <cylinderGeometry args={[0.022, 0.022, i < 2 ? 0.44 : 0.68, 6]} />
+            </mesh>
+          ))}
+        </group>
       </group>
 
       {desks.map((d, i) => (
@@ -719,6 +768,31 @@ function ClassroomScene() {
       {/* Windows down the left wall */}
       <Window position={[-6.9, 2.8, -3]} />
       <Window position={[-6.9, 2.8, 0]} />
+
+      {/* The room's entrance — every real classroom has one; this one had none */}
+      <LabDoor position={[6.95, 1.25, 4]} rotationY={-Math.PI / 2} />
+
+      {/* A little lived-in clutter — a notebook and pencil on a couple of desks, a backpack
+       * leaning against a chair — an otherwise-empty room reads as a showroom, not a classroom. */}
+      <group position={[desks[2]?.x ?? 1.3, 0.785, desks[2]?.z ?? 0.7]} rotation={[0, 0.2, 0]}>
+        <mesh castShadow>
+          <boxGeometry args={[0.22, 0.015, 0.28]} />
+          <meshStandardMaterial color="#eef0e6" roughness={0.75} />
+        </mesh>
+        <mesh position={[0.16, 0.012, -0.08]} rotation={[0, 0.9, Math.PI / 2 - 0.15]}>
+          <cylinderGeometry args={[0.007, 0.007, 0.19, 8]} />
+          <meshStandardMaterial color={PALETTE.primary} roughness={0.5} />
+        </mesh>
+      </group>
+      <group position={[(desks[0]?.x ?? -1.3) - 0.35, 0, (desks[0]?.z ?? -1.5) + 0.62]} rotation={[0, 0.3, 0]}>
+        <RoundedBox args={[0.26, 0.32, 0.14]} radius={0.05} smoothness={2} position={[0, 0.16, 0]} castShadow>
+          <meshStandardMaterial color={PALETTE.secondary} roughness={0.75} />
+        </RoundedBox>
+        <mesh position={[0, 0.32, -0.02]} rotation={[0.3, 0, 0]}>
+          <torusGeometry args={[0.07, 0.012, 8, 16, Math.PI]} />
+          <meshStandardMaterial color="#2a2a26" roughness={0.6} />
+        </mesh>
+      </group>
 
       {/* Soft grounding contact shadow under the furniture — cheap, reads as ambient occlusion */}
       <ContactShadows position={[0, 0.001, -2]} opacity={0.4} scale={14} blur={2.4} far={3.5} color="#000000" />
