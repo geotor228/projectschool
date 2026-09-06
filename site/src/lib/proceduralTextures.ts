@@ -164,6 +164,37 @@ export function createPlasterTexture({ base, dark, light, size = 512, repeat = [
   return { map, roughnessMap };
 }
 
+/** Suspended acoustic ceiling tiles: a grid of panels with dark seam lines and a fine speckled
+ * texture within each tile, so the ceiling reads as a real office/lab drop-ceiling instead of a
+ * flat color fill. */
+export function createAcousticTileTexture(size = 512, tilesPerSide = 4, color = "#d8d4c6") {
+  const { canvas, ctx } = makeCanvas(size);
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, size, size);
+  speckle(ctx, size, 90, 0.02, "#00000022".slice(0, 7), [0.02, 0.05]);
+  speckle(ctx, size, 91, 0.015, "#ffffff", [0.02, 0.05]);
+
+  const tile = size / tilesPerSide;
+  ctx.strokeStyle = "rgba(0,0,0,0.35)";
+  ctx.lineWidth = 3;
+  for (let i = 0; i <= tilesPerSide; i++) {
+    const p = i * tile;
+    ctx.beginPath();
+    ctx.moveTo(p, 0);
+    ctx.lineTo(p, size);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, p);
+    ctx.lineTo(size, p);
+    ctx.stroke();
+  }
+
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  return map;
+}
+
 /** Chalkboard slate: near-black green base, soft chalk-dust smudges, faint scratch lines. */
 export function createSlateTexture(size = 512) {
   const { canvas, ctx } = makeCanvas(size);

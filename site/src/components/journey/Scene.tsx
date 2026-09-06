@@ -7,7 +7,7 @@ import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postp
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
 import { journeyState } from "@/lib/journeyState";
-import { createWoodTexture, createSlateTexture, createPlasterTexture } from "@/lib/proceduralTextures";
+import { createWoodTexture, createSlateTexture, createPlasterTexture, createAcousticTileTexture } from "@/lib/proceduralTextures";
 
 const STATIONS = {
   hero: 6,
@@ -552,10 +552,7 @@ function ClassroomScene() {
 
       {/* Ceiling fixtures: a long linear pendant light and a small projector, both mundane real-room
        * details that do a lot of work to sell "this is a real classroom, not a stage set." */}
-      <mesh position={[0, 7.4, -2]}>
-        <boxGeometry args={[5, 0.08, 0.18]} />
-        <meshStandardMaterial color="#f7f4ea" emissive="#fff6df" emissiveIntensity={1.4} roughness={0.4} />
-      </mesh>
+      <PendantLight position={[0, 7.4, -2]} width={5} dropFrom={0.55} />
       <group position={[0, 7.85, -0.5]}>
         <mesh castShadow>
           <boxGeometry args={[0.4, 0.22, 0.28]} />
@@ -737,12 +734,27 @@ function Flower({ position = [0, 0, 0] as THREE.Vector3Tuple, scale = 1 }) {
 }
 
 /** A long linear pendant fixture hanging over a bench — reused between the classroom and the lab. */
-function PendantLight({ position, width = 5 }: { position: THREE.Vector3Tuple; width?: number }) {
+/** A slim linear pendant: black housing hung on two thin cables, glowing warmly from its
+ * underside — the housing + cables are what make it read as a suspended fixture rather than a
+ * bare glowing bar floating in the air. */
+function PendantLight({ position, width = 5, dropFrom = 1.1 }: { position: THREE.Vector3Tuple; width?: number; dropFrom?: number }) {
   return (
-    <mesh position={position}>
-      <boxGeometry args={[width, 0.08, 0.18]} />
-      <meshStandardMaterial color="#f7f4ea" emissive="#fff6df" emissiveIntensity={1.4} roughness={0.4} />
-    </mesh>
+    <group position={position}>
+      <mesh castShadow>
+        <boxGeometry args={[width, 0.14, 0.22]} />
+        <meshStandardMaterial color="#161616" roughness={0.4} metalness={0.3} />
+      </mesh>
+      <mesh position={[0, -0.09, 0]}>
+        <boxGeometry args={[width * 0.94, 0.03, 0.14]} />
+        <meshStandardMaterial color="#fff6df" emissive="#fff6df" emissiveIntensity={1.6} />
+      </mesh>
+      {[-width * 0.38, width * 0.38].map((x, i) => (
+        <mesh key={i} position={[x, dropFrom / 2 + 0.07, 0]}>
+          <cylinderGeometry args={[0.006, 0.006, dropFrom, 6]} />
+          <meshStandardMaterial color="#0d0d0d" />
+        </mesh>
+      ))}
+    </group>
   );
 }
 
@@ -894,30 +906,122 @@ function BarStool({ position }: { position: THREE.Vector3Tuple }) {
   );
 }
 
-/** A glass-fronted wall cabinet with a shelf of reagent bottles and warm under-shelf light —
- * mounted flush against a side wall (parallel to the camera's path, never in front/behind it). */
-function WallCabinet({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; rotationY?: number }) {
-  const bottles = useMemo(
-    () => Array.from({ length: 7 }, (_, i) => ({ x: -0.75 + i * 0.24 + seededJitter(i, 500) * 0.04, s: 0.85 + seededJitter(i, 501) * 0.3 })),
-    [],
+/** A two-tier storage wall like the reference photo's back wall: an upper glass-fronted cabinet
+ * (a shelf of bottles, a shelf of books/binders, warm under-shelf LEDs) sitting over a lower
+ * solid cabinet with its own counter strip — mounted flush against a side wall, parallel to the
+ * camera's path so it's never in front of or behind it. */
+function WallCabinet({ position, rotationY = 0, width = 3.2 }: { position: THREE.Vector3Tuple; rotationY?: number; width?: number }) {
+  const bottleRow = (seed: number, count: number, y: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      x: -width / 2 + 0.3 + i * ((width - 0.6) / (count - 1)) + seededJitter(i, seed) * 0.05,
+      s: 0.8 + seededJitter(i, seed + 1) * 0.35,
+      y,
+    }));
+  const bottles = useMemo(() => bottleRow(500, 8, -0.72), [width]);
+  const books = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => ({
+        x: -width / 2 + 0.35 + i * ((width - 0.7) / 11),
+        h: 0.32 + seededJitter(i, 520) * 0.12,
+        w: 0.045 + seededJitter(i, 521) * 0.02,
+        color: [`#6b2e2e`, `#2e4a6b`, `#3c5c3c`, `#6b5a2e`, `#3a3238`][i % 5],
+      })),
+    [width],
   );
+
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
+      {/* Upper glass cabinet: books shelf above, bottles shelf below */}
       <mesh receiveShadow castShadow>
-        <boxGeometry args={[2, 1.3, 0.32]} />
+        <boxGeometry args={[width, 1.5, 0.34]} />
         <meshStandardMaterial color="#16181a" roughness={0.5} metalness={0.15} />
       </mesh>
-      <mesh position={[0, 0, 0.17]}>
-        <planeGeometry args={[1.9, 1.2]} />
+      <mesh position={[0, 0, 0.18]}>
+        <planeGeometry args={[width - 0.1, 1.4]} />
         <meshPhysicalMaterial color="#1c2224" transmission={0.35} roughness={0.15} thickness={0.05} />
       </mesh>
-      <mesh position={[0, -0.65, 0.1]}>
-        <boxGeometry args={[1.94, 0.03, 0.28]} />
+      <mesh position={[0, -0.05, 0.1]}>
+        <boxGeometry args={[width - 0.06, 0.03, 0.3]} />
+        <meshStandardMaterial color="#e8c884" emissive="#e8c884" emissiveIntensity={0.7} />
+      </mesh>
+      <mesh position={[0, -0.75, 0.1]}>
+        <boxGeometry args={[width - 0.06, 0.03, 0.3]} />
         <meshStandardMaterial color="#e8c884" emissive="#e8c884" emissiveIntensity={0.9} />
       </mesh>
-      {bottles.map((b, i) => (
-        <ReagentBottle key={i} position={[b.x, -0.57, 0.05]} scale={b.s} />
+      {books.map((b, i) => (
+        <mesh key={i} position={[b.x, -0.05 + b.h / 2 + 0.02, 0.05]} castShadow>
+          <boxGeometry args={[b.w, b.h, 0.2]} />
+          <meshStandardMaterial color={b.color} roughness={0.7} />
+        </mesh>
       ))}
+      {bottles.map((b, i) => (
+        <ReagentBottle key={i} position={[b.x, b.y, 0.05]} scale={b.s} />
+      ))}
+
+      {/* Lower solid cabinet + counter strip, the second tier of the storage wall */}
+      <mesh position={[0, -1.15, 0.02]} receiveShadow castShadow>
+        <boxGeometry args={[width, 0.85, 0.4]} />
+        <meshStandardMaterial color="#101214" roughness={0.55} />
+      </mesh>
+      <mesh position={[0, -0.72, 0.05]}>
+        <boxGeometry args={[width + 0.06, 0.04, 0.44]} />
+        <meshStandardMaterial color="#3a3d40" metalness={0.6} roughness={0.35} />
+      </mesh>
+    </group>
+  );
+}
+
+/** A large window with a partially-lowered roller blind — bright, slightly warm daylight glow
+ * rather than the desk-lamp warmth of the interior lights, so it reads as an outside source. */
+function LabWindow({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; rotationY?: number }) {
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh>
+        <planeGeometry args={[2.4, 3.4]} />
+        <meshStandardMaterial color="#dfe8ec" emissive="#dfe8ec" emissiveIntensity={0.9} transparent opacity={0.75} />
+      </mesh>
+      {/* Mullions */}
+      {[-0.78, 0, 0.78].map((x, i) => (
+        <mesh key={i} position={[x, 0, 0.03]}>
+          <boxGeometry args={[0.05, 3.4, 0.05]} />
+          <meshStandardMaterial color="#2b2b28" />
+        </mesh>
+      ))}
+      <mesh position={[0, 1.2, 0.03]}>
+        <boxGeometry args={[2.4, 0.05, 0.05]} />
+        <meshStandardMaterial color="#2b2b28" />
+      </mesh>
+      {/* Roller blind, pulled about a third of the way down */}
+      <mesh position={[0, 1.15, 0.06]}>
+        <planeGeometry args={[2.3, 1.05]} />
+        <meshStandardMaterial color="#c9c2ac" roughness={0.9} />
+      </mesh>
+      <pointLight position={[0, 0, 1.6]} intensity={5} color="#eef2ee" />
+    </group>
+  );
+}
+
+/** A plain wood door with a small vision panel — the "this room connects to a building" detail
+ * that keeps the lab from feeling like a stage set floating in a void. */
+function LabDoor({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; rotationY?: number }) {
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh>
+        <boxGeometry args={[1.1, 2.5, 0.08]} />
+        <meshStandardMaterial color="#5a4632" roughness={0.6} />
+      </mesh>
+      <mesh position={[0, 0.55, 0.045]}>
+        <planeGeometry args={[0.32, 0.32]} />
+        <meshStandardMaterial color="#2a3230" emissive="#3a4a44" emissiveIntensity={0.3} />
+      </mesh>
+      <mesh position={[0.42, -0.1, 0.06]}>
+        <sphereGeometry args={[0.035, 12, 12]} />
+        <meshStandardMaterial color="#c9c2ac" metalness={0.7} roughness={0.3} />
+      </mesh>
+      <mesh position={[0, 1.29, 0.02]}>
+        <boxGeometry args={[1.3, 0.08, 0.14]} />
+        <meshStandardMaterial color="#3a2f22" roughness={0.6} />
+      </mesh>
     </group>
   );
 }
@@ -955,7 +1059,10 @@ function LabScene() {
     const floorMat = new THREE.MeshStandardMaterial({ color: "#0f0c09", roughness: 0.4, envMapIntensity: 0.3 });
     const counterMat = new THREE.MeshStandardMaterial({ color: "#7d8286", metalness: 0.75, roughness: 0.32, envMapIntensity: 0.5 });
     const cabinetMat = new THREE.MeshStandardMaterial({ color: "#141414", roughness: 0.55 });
-    return { wallMat, floorMat, counterMat, cabinetMat };
+    const ceilingTiles = createAcousticTileTexture(512, 5, "#3a352e");
+    ceilingTiles.repeat.set(2.5, 6);
+    const ceilingMat = new THREE.MeshStandardMaterial({ map: ceilingTiles, roughness: 0.95 });
+    return { wallMat, floorMat, counterMat, cabinetMat, ceilingMat };
   }, []);
 
   const steam = useMemo(() => {
@@ -997,6 +1104,14 @@ function LabScene() {
       <mesh position={[5, 3, 0]} rotation={[0, -Math.PI / 2, 0]} material={materials.wallMat} receiveShadow>
         <planeGeometry args={[26, 8]} />
       </mesh>
+      <mesh position={[0, 4.4, 0]} rotation={[Math.PI / 2, 0, 0]} material={materials.ceilingMat} receiveShadow>
+        <planeGeometry args={[11, 26]} />
+      </mesh>
+      {/* Ceiling vent grille — a small mundane detail, recessed and darker than the tiles around it */}
+      <mesh position={[2, 4.38, -4]} rotation={[Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.9, 0.5]} />
+        <meshStandardMaterial color="#111311" roughness={0.6} />
+      </mesh>
 
       {/* Raised stainless bench on a dark cabinet base, replacing the round "perfume podium" —
        * the reference is a real lab bench at counter height, not a display pedestal. */}
@@ -1007,11 +1122,12 @@ function LabScene() {
         <boxGeometry args={[7.4, 0.59, 2.2]} />
       </mesh>
       <WallCabinet position={[-4.83, 1.6, -2.6]} rotationY={Math.PI / 2} />
-      <Window position={[4.9, 1.9, -2.8]} />
-      <PottedPlant position={[4.3, -0.82, -3.6]} scale={1.1} />
+      <LabWindow position={[4.85, 1.9, -3.4]} rotationY={-Math.PI / 2} />
+      <PottedPlant position={[4.3, -0.82, -5.2]} scale={1.1} />
+      <LabDoor position={[4.92, 0.44, 6.6]} rotationY={-Math.PI / 2} />
       <Poster position={[4.83, 2.1, 1.6]} rotationY={-Math.PI / 2} label={"AROMATIC COMPOUNDS\nTERPENES"} />
       <Poster position={[4.83, 2.1, 4]} rotationY={-Math.PI / 2} label={"NATURAL SCIENCE\nBETTER FUTURE"} />
-      <PendantLight position={[0, 2.9, 0.7]} width={4} />
+      <PendantLight position={[0, 2.9, 0.7]} width={4} dropFrom={1.4} />
       <BarStool position={[0, -0.82, 2.6]} />
 
       {/* The whole apparatus cluster sits pushed back from the camera's exact path — a tall
