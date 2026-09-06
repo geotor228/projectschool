@@ -7,7 +7,13 @@ import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postp
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
 import { journeyState } from "@/lib/journeyState";
-import { createWoodTexture, createSlateTexture, createPlasterTexture, createAcousticTileTexture } from "@/lib/proceduralTextures";
+import {
+  createWoodTexture,
+  createSlateTexture,
+  createPlasterTexture,
+  createAcousticTileTexture,
+  createDataScreenTexture,
+} from "@/lib/proceduralTextures";
 
 const STATIONS = {
   hero: 6,
@@ -1233,7 +1239,7 @@ function LabScene() {
   );
 }
 
-function Bond({ to }: { to: THREE.Vector3Tuple }) {
+function Bond({ to, material }: { to: THREE.Vector3Tuple; material?: THREE.Material }) {
   const { position, quaternion, length } = useMemo(() => {
     const start = new THREE.Vector3(0, 0, 0);
     const end = new THREE.Vector3(...to);
@@ -1247,10 +1253,75 @@ function Bond({ to }: { to: THREE.Vector3Tuple }) {
   }, [to]);
 
   return (
-    <mesh position={position} quaternion={quaternion}>
-      <cylinderGeometry args={[0.09, 0.09, length, 12]} />
-      <meshStandardMaterial color="#3a2f26" metalness={0.4} roughness={0.3} />
+    <mesh position={position} quaternion={quaternion} material={material} castShadow>
+      <cylinderGeometry args={[0.09, 0.09, length, 16]} />
+      {!material && <meshStandardMaterial color="#3a2f26" metalness={0.4} roughness={0.3} />}
     </mesh>
+  );
+}
+
+/** A stylized, abstracted scientist — architectural-visualization "entourage" style (a peg-doll
+ * silhouette: coat, head, no detailed anatomy) rather than an attempt at a realistic figure. This
+ * reads fine at the mid-distance the reference photos place people at; a crude attempt at real
+ * anatomy would look worse than this simplification, not better. */
+function LabFigure({
+  position,
+  rotationY = 0,
+  hairColor = "#3a2c20",
+}: {
+  position: THREE.Vector3Tuple;
+  rotationY?: number;
+  hairColor?: string;
+}) {
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh position={[0, 0.4, 0]} castShadow>
+        <cylinderGeometry args={[0.12, 0.14, 0.8, 12]} />
+        <meshStandardMaterial color="#2b2f3a" roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 1.05, 0]} castShadow>
+        <cylinderGeometry args={[0.22, 0.18, 0.72, 12]} />
+        <meshStandardMaterial color="#f2f2ef" roughness={0.55} />
+      </mesh>
+      <mesh position={[-0.24, 1.0, 0]} rotation={[0, 0, 0.15]} castShadow>
+        <cylinderGeometry args={[0.045, 0.05, 0.6, 8]} />
+        <meshStandardMaterial color="#f2f2ef" roughness={0.55} />
+      </mesh>
+      <mesh position={[0.24, 1.0, 0]} rotation={[0, 0, -0.15]} castShadow>
+        <cylinderGeometry args={[0.045, 0.05, 0.6, 8]} />
+        <meshStandardMaterial color="#f2f2ef" roughness={0.55} />
+      </mesh>
+      <mesh position={[0, 1.56, 0]} castShadow>
+        <sphereGeometry args={[0.135, 16, 16]} />
+        <meshStandardMaterial color="#caa27a" roughness={0.6} />
+      </mesh>
+      <mesh position={[0, 1.62, 0]}>
+        <sphereGeometry args={[0.14, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
+        <meshStandardMaterial color={hairColor} roughness={0.8} />
+      </mesh>
+    </group>
+  );
+}
+
+/** A monitor on a small stand, screen glowing with a data-chart texture — background-equipment
+ * set dressing that reads as "busy modern lab" from across the room. */
+function MonitorProp({ position, rotationY = 0, hue = "blue" }: { position: THREE.Vector3Tuple; rotationY?: number; hue?: "blue" | "green" }) {
+  const screen = useMemo(() => createDataScreenTexture(256, hue), [hue]);
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh position={[0, 0.32, 0]} castShadow>
+        <boxGeometry args={[0.62, 0.4, 0.03]} />
+        <meshBasicMaterial map={screen} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 0.08, 0]}>
+        <cylinderGeometry args={[0.02, 0.05, 0.16, 10]} />
+        <meshStandardMaterial color="#1c1c1c" roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 0.005, 0]}>
+        <cylinderGeometry args={[0.14, 0.14, 0.01, 20]} />
+        <meshStandardMaterial color="#1c1c1c" roughness={0.5} />
+      </mesh>
+    </group>
   );
 }
 
@@ -1262,6 +1333,36 @@ function MoleculeScene() {
   useFrame((state) => {
     if (groupRef.current && !prefersReducedMotion) groupRef.current.rotation.y = state.clock.elapsedTime * 0.25;
   });
+
+  // Glossy "product render" molecule materials — chrome bonds, glossy plastic atoms — matching
+  // the reference photo's ball-and-stick model instead of flat emissive-tinted spheres.
+  const molMaterials = useMemo(() => {
+    const chrome = new THREE.MeshStandardMaterial({ color: "#e2e6e8", metalness: 1, roughness: 0.18, envMapIntensity: 1.2 });
+    const dark = new THREE.MeshPhysicalMaterial({ color: "#17181a", roughness: 0.14, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 1 });
+    const white = new THREE.MeshPhysicalMaterial({ color: "#f2f2ef", roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 1 });
+    return { chrome, dark, white };
+  }, []);
+
+  // Bright, clean modern-lab room shell — cool light gray-blue, a world away from the noir
+  // gold/wine palette elsewhere, matching the reference photos directly.
+  const roomMaterials = useMemo(() => {
+    const wallPlaster = createPlasterTexture({
+      base: "#cdd4d8",
+      dark: "#b9c1c6",
+      light: "#dee4e6",
+      size: 512,
+      repeat: [3, 2],
+      seed: 71,
+    });
+    const wallMat = new THREE.MeshStandardMaterial({ map: wallPlaster.map, roughnessMap: wallPlaster.roughnessMap, roughness: 0.85 });
+    const floorMat = new THREE.MeshStandardMaterial({ color: "#a9afb2", roughness: 0.35, metalness: 0.15, envMapIntensity: 0.4 });
+    const ceilingTiles = createAcousticTileTexture(512, 5, "#eef0ee");
+    ceilingTiles.repeat.set(3, 5);
+    const ceilingMat = new THREE.MeshStandardMaterial({ map: ceilingTiles, roughness: 0.95 });
+    const counterMat = new THREE.MeshStandardMaterial({ color: "#232a33", roughness: 0.4 });
+    const cabinetMat = new THREE.MeshStandardMaterial({ color: "#d7dadc", roughness: 0.6 });
+    return { wallMat, floorMat, ceilingMat, counterMat, cabinetMat };
+  }, []);
 
   const atoms = useMemo(
     () =>
@@ -1276,36 +1377,79 @@ function MoleculeScene() {
     [],
   );
 
+  const FLOOR_Y = -2;
+  const CEILING_Y = 4.3;
+  const WALL_X = 6;
+
   return (
     <group ref={sceneRef} position={[0, 0, STATIONS.molecule]}>
-      <LightBeam position={[0, 6, 0]} rotation={[Math.PI, 0, 0]} length={10} radius={2} opacity={0.2} />
+      {/* Room shell: bright, cool, symmetrical — side walls only (camera-safe), floor, and a
+       * suspended white acoustic-tile ceiling with flush light panels instead of one dramatic beam. */}
+      <mesh position={[-WALL_X, (FLOOR_Y + CEILING_Y) / 2, 0]} rotation={[0, Math.PI / 2, 0]} material={roomMaterials.wallMat} receiveShadow>
+        <planeGeometry args={[26, CEILING_Y - FLOOR_Y]} />
+      </mesh>
+      <mesh position={[WALL_X, (FLOOR_Y + CEILING_Y) / 2, 0]} rotation={[0, -Math.PI / 2, 0]} material={roomMaterials.wallMat} receiveShadow>
+        <planeGeometry args={[26, CEILING_Y - FLOOR_Y]} />
+      </mesh>
+      <mesh position={[0, FLOOR_Y, 0]} rotation={[-Math.PI / 2, 0, 0]} material={roomMaterials.floorMat} receiveShadow>
+        <planeGeometry args={[WALL_X * 2, 26]} />
+      </mesh>
+      <mesh position={[0, CEILING_Y, 0]} rotation={[Math.PI / 2, 0, 0]} material={roomMaterials.ceilingMat} receiveShadow>
+        <planeGeometry args={[WALL_X * 2, 26]} />
+      </mesh>
+      {[-3.2, 0, 3.2].map((z, i) => (
+        <mesh key={i} position={[0, CEILING_Y - 0.02, z]} rotation={[Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[2.6, 1.3]} />
+          <meshStandardMaterial color="#f6f7f4" emissive="#eef2ff" emissiveIntensity={1.3} />
+        </mesh>
+      ))}
+
+      {/* Side benches with glowing monitors, echoing the reference's data-screen-lined walls */}
+      <mesh position={[-WALL_X + 0.9, FLOOR_Y + 0.5, -3]} material={roomMaterials.cabinetMat} receiveShadow castShadow>
+        <boxGeometry args={[1.5, 1, 2.6]} />
+      </mesh>
+      <mesh position={[-WALL_X + 0.9, FLOOR_Y + 1.02, -3]} material={roomMaterials.counterMat}>
+        <boxGeometry args={[1.56, 0.05, 2.66]} />
+      </mesh>
+      <MonitorProp position={[-WALL_X + 0.9, FLOOR_Y + 1.05, -3.7]} rotationY={Math.PI * 0.15} hue="blue" />
+      <MonitorProp position={[-WALL_X + 0.9, FLOOR_Y + 1.05, -2.2]} rotationY={Math.PI * 0.15} hue="green" />
+
+      <mesh position={[WALL_X - 0.9, FLOOR_Y + 0.5, 2]} material={roomMaterials.cabinetMat} receiveShadow castShadow>
+        <boxGeometry args={[1.5, 1, 2.6]} />
+      </mesh>
+      <mesh position={[WALL_X - 0.9, FLOOR_Y + 1.02, 2]} material={roomMaterials.counterMat}>
+        <boxGeometry args={[1.56, 0.05, 2.66]} />
+      </mesh>
+      <MonitorProp position={[WALL_X - 0.9, FLOOR_Y + 1.05, 1.3]} rotationY={-Math.PI * 0.15} hue="blue" />
+
+      {/* Scientists at work — stylized entourage figures, not an attempt at realistic people;
+       * placed at a distance the reference photos also keep them at, where the abstraction reads
+       * as "a person" rather than inviting scrutiny. */}
+      <LabFigure position={[-WALL_X + 0.9, FLOOR_Y, -1.4]} rotationY={Math.PI * 0.85} />
+      <LabFigure position={[WALL_X - 0.9, FLOOR_Y, 1.7]} rotationY={-Math.PI * 0.85} hairColor="#1c1712" />
+      <LabFigure position={[-1.6, FLOOR_Y, -4.4]} rotationY={0.6} hairColor="#5a4a34" />
+
+      {/* Hero molecule — glossy chrome-and-plastic ball-and-stick model, sharp in the foreground */}
       <group ref={groupRef}>
         {atoms.map((pos, i) => (
-          <Bond key={i} to={pos} />
+          <Bond key={i} to={pos} material={molMaterials.chrome} />
         ))}
-        <mesh>
+        <mesh castShadow>
           <sphereGeometry args={[0.75, 32, 32]} />
-          <meshStandardMaterial
-            color={PALETTE.secondary}
-            emissive={PALETTE.secondary}
-            emissiveIntensity={0.5}
-            roughness={0.25}
-          />
+          <primitive object={molMaterials.dark} attach="material" />
         </mesh>
         {atoms.map((pos, i) => (
-          <mesh key={i} position={pos}>
+          <mesh key={i} position={pos} castShadow>
             <sphereGeometry args={[0.38, 24, 24]} />
-            <meshStandardMaterial
-              color={PALETTE.accent}
-              emissive={PALETTE.accent}
-              emissiveIntensity={0.45}
-              roughness={0.25}
-            />
+            <primitive object={molMaterials.white} attach="material" />
           </mesh>
         ))}
       </group>
-      <pointLight position={[0, 0, 4]} intensity={16} color="#fff4dd" />
-      <pointLight position={[-3, 2, -2]} intensity={9} color={PALETTE.secondary} />
+
+      <hemisphereLight args={["#eef4ff", "#8f9aa3", 0.85]} />
+      <pointLight position={[0, 2, 3]} intensity={10} color="#f2f6ff" />
+      <pointLight position={[-2.5, 1.5, -1]} intensity={6} color="#dfeeff" />
+      <pointLight position={[2.5, 1, 1]} intensity={5} color="#ffffff" />
     </group>
   );
 }

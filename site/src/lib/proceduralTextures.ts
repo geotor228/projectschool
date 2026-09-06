@@ -195,6 +195,45 @@ export function createAcousticTileTexture(size = 512, tilesPerSide = 4, color = 
   return map;
 }
 
+/** A monitor screen showing a glowing data chart — background-equipment set dressing for a modern
+ * research-lab scene, cheap to read as "busy computer" even at a glance/distance. */
+export function createDataScreenTexture(size = 256, hue: "blue" | "green" = "blue") {
+  const { canvas, ctx } = makeCanvas(size);
+  ctx.fillStyle = "#081018";
+  ctx.fillRect(0, 0, size, size);
+  const line = hue === "blue" ? "#5ec8f2" : "#6bd88a";
+  ctx.strokeStyle = line;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  const points = 24;
+  for (let i = 0; i <= points; i++) {
+    const x = (i / points) * size;
+    const y = size * 0.65 - Math.abs(Math.sin(i * 0.9 + hash(i, 0, 60) * 4)) * size * 0.35 - hash(i, 1, 61) * size * 0.08;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 5; i++) {
+    const y = (i / 5) * size;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(size, y);
+    ctx.stroke();
+  }
+  ctx.fillStyle = line;
+  for (let i = 0; i < 6; i++) {
+    ctx.globalAlpha = 0.6;
+    ctx.fillRect(size * 0.05 + i * size * 0.14, size * 0.08, size * 0.08, size * 0.02);
+  }
+  ctx.globalAlpha = 1;
+
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  return map;
+}
+
 /** Chalkboard slate: near-black green base, soft chalk-dust smudges, faint scratch lines. */
 export function createSlateTexture(size = 512) {
   const { canvas, ctx } = makeCanvas(size);
