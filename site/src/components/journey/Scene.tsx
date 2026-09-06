@@ -747,6 +747,29 @@ function LabScene() {
     }
   });
 
+  // Dark charcoal room shell + bench, same technique as the classroom (side walls only — never
+  // front/back, the camera flies straight through) but kept moody: near-black, minimal texture,
+  // no daylight. This is the control condition next to the UAHD ultrasonic bath, matching the
+  // TDR's actual two-condition design instead of one flask floating alone.
+  const materials = useMemo(() => {
+    const wallPlaster = createPlasterTexture({
+      base: "#171410",
+      dark: "#0c0a08",
+      light: "#241f19",
+      size: 512,
+      repeat: [2, 2],
+      seed: 41,
+    });
+    const wallMat = new THREE.MeshStandardMaterial({
+      map: wallPlaster.map,
+      roughnessMap: wallPlaster.roughnessMap,
+      roughness: 0.9,
+      envMapIntensity: 0.1,
+    });
+    const benchMat = new THREE.MeshStandardMaterial({ color: "#0f0c09", roughness: 0.4, envMapIntensity: 0.3 });
+    return { wallMat, benchMat };
+  }, []);
+
   const steam = useMemo(() => {
     const count = 120;
     const arr = new Float32Array(count * 3);
@@ -758,13 +781,42 @@ function LabScene() {
     return arr;
   }, []);
 
+  const bubbles = useMemo(() => {
+    const count = 40;
+    const arr = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      arr[i * 3] = (seededJitter(i, 400) - 0.5) * 0.9;
+      arr[i * 3 + 1] = seededJitter(i, 401) * 0.35;
+      arr[i * 3 + 2] = (seededJitter(i, 402) - 0.5) * 0.55;
+    }
+    return arr;
+  }, []);
+
   return (
     <group ref={groupRef} position={[0, -1, STATIONS.lab]}>
+      {/* Floor + side-wall shell — grounds the apparatus instead of leaving it floating in pure
+       * fog, without giving up the moody dark-lab read (near-black, almost no fill light). */}
+      <mesh position={[0, -0.82, 0]} rotation={[-Math.PI / 2, 0, 0]} material={materials.benchMat} receiveShadow>
+        <planeGeometry args={[11, 26]} />
+      </mesh>
+      <mesh position={[-5, 3, 0]} rotation={[0, Math.PI / 2, 0]} material={materials.wallMat} receiveShadow>
+        <planeGeometry args={[26, 8]} />
+      </mesh>
+      <mesh position={[5, 3, 0]} rotation={[0, -Math.PI / 2, 0]} material={materials.wallMat} receiveShadow>
+        <planeGeometry args={[26, 8]} />
+      </mesh>
+
       {/* Podium the flask sits on, perfume-ad style */}
       <mesh position={[0, -0.55, 0]}>
         <cylinderGeometry args={[1.6, 1.8, 0.5, 48]} />
         <meshStandardMaterial color="#15100b" roughness={0.5} metalness={0.3} />
       </mesh>
+      {/* Heating mantle glow beneath the flask — the actual heat source the methodology describes */}
+      <mesh position={[0, -0.28, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.55, 0.75, 32]} />
+        <meshStandardMaterial color="#c0562a" emissive="#e2712f" emissiveIntensity={1.6} roughness={0.5} />
+      </mesh>
+      <pointLight position={[0, -0.2, 0]} intensity={4} distance={4} decay={2} color="#e2712f" />
       {/* Flask */}
       <mesh ref={flaskRef} position={[0, 0.6, 0]} castShadow>
         <sphereGeometry args={[1, 32, 32]} />
@@ -793,6 +845,43 @@ function LabScene() {
         </bufferGeometry>
         <pointsMaterial size={0.05} color="#f2ece2" transparent opacity={0.25} />
       </points>
+
+      {/* Graduated collection cylinder — a small glass tube catching the separated oil, the actual
+       * measurement the whole experiment comes down to (yield %, per the methodology text). */}
+      <group position={[1.9, -0.78, 1.9]}>
+        <mesh position={[0, 0.35, 0]} castShadow>
+          <cylinderGeometry args={[0.14, 0.14, 0.7, 20, 1, true]} />
+          <meshPhysicalMaterial color="#dfe6e0" transmission={0.9} roughness={0.05} thickness={0.15} side={THREE.DoubleSide} />
+        </mesh>
+        <mesh position={[0, 0.14, 0]}>
+          <cylinderGeometry args={[0.13, 0.13, 0.22, 20]} />
+          <meshPhysicalMaterial color="#cfe0e8" transmission={0.6} roughness={0.1} thickness={0.2} />
+        </mesh>
+        <mesh position={[0, 0.27, 0]}>
+          <cylinderGeometry args={[0.132, 0.132, 0.04, 20]} />
+          <meshStandardMaterial color={PALETTE.primary} emissive={PALETTE.primary} emissiveIntensity={0.4} roughness={0.3} />
+        </mesh>
+      </group>
+
+      {/* Ultrasonic bath — Condition B (UAHD) sitting right next to the classic setup, the actual
+       * comparison the whole TDR is built around, not just a lone hero flask. */}
+      <group position={[-2.6, -0.5, 1.4]}>
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[1.3, 0.6, 0.9]} />
+          <meshStandardMaterial color="#12181c" roughness={0.45} metalness={0.2} />
+        </mesh>
+        <mesh position={[0, 0.31, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[1.15, 0.75]} />
+          <meshStandardMaterial color="#5fb8c9" emissive="#5fb8c9" emissiveIntensity={0.9} transparent opacity={0.75} />
+        </mesh>
+        <points position={[0, 0.32, 0]}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[bubbles, 3]} />
+          </bufferGeometry>
+          <pointsMaterial size={0.025} color="#dff5fa" transparent opacity={0.8} />
+        </points>
+        <pointLight position={[0, 0.4, 0]} intensity={3} distance={3} decay={2} color="#5fb8c9" />
+      </group>
 
       {/* Raw material floating beside the flask — kept on the right, clear of the left-aligned text card */}
       <Flower position={[2.6, 1.2, 1.4]} scale={0.85} />
