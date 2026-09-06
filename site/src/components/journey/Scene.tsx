@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, ContactShadows } from "@react-three/drei";
+import { Environment, ContactShadows, Text } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
@@ -34,6 +34,18 @@ const PALETTE = {
   leafDeep: "#3c6238",
   leafBright: "#6f9c4f",
   terracotta: "#8a4a34",
+  // Bright biophilic classroom repaint, matched directly to the reference photo: daylight, sage
+  // walls, warm oak — a deliberate departure from the noir gold/wine mood used in the other
+  // scenes. Those scenes keep their own dramatic lighting; this one reads like a real, lived-in,
+  // sunlit eco-classroom.
+  sageWall: "#aab89a",
+  sageWallDark: "#8b9a7c",
+  sageWallLight: "#c7d0b6",
+  oak: "#cdb188",
+  oakDark: "#a9885d",
+  oakLight: "#e3cda3",
+  oliveChair: "#66754a",
+  chalkGreen: "#3c4a3c",
 };
 
 /** Camera z/x/y is driven by scroll progress, not the clock, so it stays fine under
@@ -73,7 +85,7 @@ function CameraRig() {
     // its own position — so no amount of light near the camera helped, the frame was centered on
     // genuinely empty space. A shorter look-ahead keeps the aim point closer to what's actually
     // built out around the camera at any given moment.
-    target.set(sway * 0.5, 1, z - 7);
+    target.set(sway * 0.5, 1, z - 5);
     state.camera.lookAt(target);
   });
   return null;
@@ -132,6 +144,45 @@ function Starfield() {
   );
 }
 
+/** A small cluster of glowing spore/pollen particles with a soft light of their own, sitting at
+ * the midpoint between two stations. Each set's own lighting is tightly clustered around its
+ * furniture, so the travel corridor between sets was falling to near-black fog no matter how the
+ * camera happened to be aimed at that moment — this gives every corridor a guaranteed lit anchor,
+ * and reads as living spores drifting in the dark rather than a bare technical fix. */
+function TransitGlow({ z, color = PALETTE.leafBright }: { z: number; color?: string }) {
+  const positions = useMemo(() => {
+    const count = 26;
+    const arr = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      const a = seededJitter(i, 300) * Math.PI * 2;
+      const r = 0.3 + seededJitter(i, 301) * 1.3;
+      arr[i * 3] = Math.cos(a) * r;
+      arr[i * 3 + 1] = (seededJitter(i, 302) - 0.5) * 2.2;
+      arr[i * 3 + 2] = Math.sin(a) * r * 0.6;
+    }
+    return arr;
+  }, []);
+
+  // Offset off the camera's own path (it sways at most ±0.6) rather than sitting on the
+  // centerline — a small prop directly in the flight line reads as a huge blown-out orb the
+  // instant the camera passes close to it, the same trap the teacher's desk fell into earlier.
+  return (
+    <group position={[3.4, 1.2, z]}>
+      <pointLight intensity={4} distance={11} decay={2} color={color} />
+      <mesh>
+        <sphereGeometry args={[0.14, 16, 16]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} roughness={0.4} />
+      </mesh>
+      <points>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial size={0.045} color={color} transparent opacity={0.65} sizeAttenuation />
+      </points>
+    </group>
+  );
+}
+
 /** A single dramatic volumetric-looking light shaft, like a spotlight cutting through dust —
  * the "NOIR ÉTERNEL" perfume-ad look. Pure additive-blended geometry, no post-processing needed. */
 function LightBeam({
@@ -172,11 +223,13 @@ function Desk({
   rotationY = 0,
   woodMat,
   metalMat,
+  chairMat,
 }: {
   position: THREE.Vector3Tuple;
   rotationY?: number;
   woodMat: THREE.Material;
   metalMat: THREE.Material;
+  chairMat: THREE.Material;
 }) {
   const legPositions: THREE.Vector3Tuple[] = [
     [-0.55, 0, -0.32],
@@ -195,11 +248,11 @@ function Desk({
           <cylinderGeometry args={[0.03, 0.03, 0.74, 8]} />
         </mesh>
       ))}
-      {/* Chair, offset behind the desk */}
-      <mesh position={[0, 0.42, 0.62]} material={woodMat} castShadow>
+      {/* Chair, offset behind the desk — its own olive plastic-shell material, not the desk's wood */}
+      <mesh position={[0, 0.42, 0.62]} material={chairMat} castShadow>
         <boxGeometry args={[0.55, 0.06, 0.5]} />
       </mesh>
-      <mesh position={[0, 0.75, 0.85]} material={woodMat} castShadow>
+      <mesh position={[0, 0.75, 0.85]} material={chairMat} castShadow>
         <boxGeometry args={[0.55, 0.65, 0.06]} />
       </mesh>
       <mesh position={[-0.24, 0.2, 0.6]} material={metalMat}>
@@ -218,21 +271,113 @@ function Window({ position }: { position: THREE.Vector3Tuple }) {
     <group position={position}>
       <mesh>
         <planeGeometry args={[1.4, 3.2]} />
-        <meshStandardMaterial
-          color={PALETTE.accent}
-          emissive={PALETTE.accent}
-          emissiveIntensity={0.6}
-          transparent
-          opacity={0.35}
-        />
+        <meshStandardMaterial color="#f4ecd8" emissive="#f4ecd8" emissiveIntensity={0.8} transparent opacity={0.55} />
       </mesh>
       {[-0.46, 0, 0.46].map((x, i) => (
         <mesh key={i} position={[x, 0, 0.02]}>
           <boxGeometry args={[0.04, 3.2, 0.04]} />
-          <meshStandardMaterial color="#0d0a07" />
+          <meshStandardMaterial color="#3a3a36" />
         </mesh>
       ))}
-      <pointLight position={[0.4, 0, 1.5]} intensity={6} color={PALETTE.accent} />
+      <pointLight position={[0.4, 0, 1.5]} intensity={5} color="#fff3dc" />
+    </group>
+  );
+}
+
+/** A round wall clock — one small, instantly-readable "this is a real room" detail. */
+function WallClock({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; rotationY?: number }) {
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh>
+        <circleGeometry args={[0.34, 32]} />
+        <meshStandardMaterial color="#f7f3e8" roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 0, -0.002]}>
+        <ringGeometry args={[0.34, 0.37, 32]} />
+        <meshStandardMaterial color="#2a2b26" roughness={0.5} />
+      </mesh>
+      <group rotation={[0, 0, -0.5]}>
+        <mesh position={[0, 0.09, 0.002]}>
+          <planeGeometry args={[0.022, 0.18]} />
+          <meshBasicMaterial color="#2a2b26" />
+        </mesh>
+      </group>
+      <group rotation={[0, 0, 2.1]}>
+        <mesh position={[0, 0.13, 0.002]}>
+          <planeGeometry args={[0.016, 0.26]} />
+          <meshBasicMaterial color="#2a2b26" />
+        </mesh>
+      </group>
+      <mesh position={[0, 0, 0.003]}>
+        <circleGeometry args={[0.02, 12]} />
+        <meshBasicMaterial color="#2a2b26" />
+      </mesh>
+    </group>
+  );
+}
+
+/** A botanical poster: procedurally painted (cream ground + a leaf silhouette + an accent rule),
+ * with real drei/troika text for the label — echoes the reference photo's "PLANTES AROMÀTIQUES"
+ * wall print instead of a bare wall. */
+function Poster({
+  position,
+  rotationY = 0,
+  label,
+}: {
+  position: THREE.Vector3Tuple;
+  rotationY?: number;
+  label: string;
+}) {
+  const texture = useMemo(() => {
+    const size = 512;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = Math.round(size * 1.3);
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#f4efe2";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#8b9a7c";
+    ctx.fillRect(0, canvas.height * 0.62, canvas.width, canvas.height * 0.38);
+    // A simple stylized leaf/stem sketch.
+    ctx.strokeStyle = "#3c6238";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, canvas.height * 0.15);
+    ctx.lineTo(canvas.width / 2, canvas.height * 0.58);
+    ctx.stroke();
+    ctx.fillStyle = "#4f7c47";
+    for (const t of [0.22, 0.32, 0.42, 0.5]) {
+      const y = canvas.height * (0.15 + t);
+      const dir = t % 0.2 < 0.1 ? 1 : -1;
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2, y);
+      ctx.quadraticCurveTo(canvas.width / 2 + dir * 90, y - 30, canvas.width / 2 + dir * 130, y + 10);
+      ctx.quadraticCurveTo(canvas.width / 2 + dir * 90, y + 35, canvas.width / 2, y + 20);
+      ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }, []);
+
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh castShadow receiveShadow>
+        <planeGeometry args={[1, 1.3]} />
+        <meshStandardMaterial map={texture} roughness={0.8} />
+      </mesh>
+      <Text
+        position={[0, -0.35, 0.01]}
+        fontSize={0.075}
+        color="#2f2a20"
+        anchorX="center"
+        anchorY="middle"
+        maxWidth={0.85}
+        textAlign="center"
+        letterSpacing={0.03}
+      >
+        {label}
+      </Text>
     </group>
   );
 }
@@ -302,19 +447,21 @@ function ClassroomScene() {
 
   // Shared material + texture instances (created once, reused across every desk/chair mesh)
   // rather than one meshStandardMaterial per box, per the threejs "share material instances" guideline.
+  // Bright warm-oak-and-sage repaint, matched to the reference photo — a deliberate departure from
+  // the dark noir palette used in the rest of the journey.
   const materials = useMemo(() => {
     const deskWood = createWoodTexture({
-      base: "#241a10",
-      dark: "#120b06",
-      light: "#3c2b18",
+      base: PALETTE.oak,
+      dark: PALETTE.oakDark,
+      light: PALETTE.oakLight,
       size: 512,
       repeat: [1, 1],
       seed: 3,
     });
     const floorWood = createWoodTexture({
-      base: "#160f0a",
-      dark: "#0a0604",
-      light: "#251a10",
+      base: PALETTE.oak,
+      dark: PALETTE.oakDark,
+      light: PALETTE.oakLight,
       size: 512,
       repeat: [5, 4],
       plankLines: true,
@@ -323,34 +470,32 @@ function ClassroomScene() {
     const woodMat = new THREE.MeshStandardMaterial({
       map: deskWood.map,
       roughnessMap: deskWood.roughnessMap,
-      roughness: 0.6,
-      envMapIntensity: 0.12,
-      emissive: new THREE.Color(PALETTE.primary),
-      emissiveIntensity: 0.04,
+      roughness: 0.5,
+      envMapIntensity: 0.2,
     });
     const metalMat = new THREE.MeshStandardMaterial({
-      color: "#1a1410",
+      color: "#2a2b26",
       metalness: 0.6,
-      roughness: 0.55,
+      roughness: 0.5,
       envMapIntensity: 0.4,
     });
-    // Floor gets zero environment contribution: a matte wood floor has nothing to gain from HDRI
-    // reflections, and the "studio" preset's bright softbox region was blowing out the near floor
-    // as a hot, view-angle-dependent specular patch under grazing camera angles — not a light bug,
-    // an IBL-on-a-flat-plane bug. Direct scene lights still shade it normally.
+    const chairMat = new THREE.MeshStandardMaterial({
+      color: PALETTE.oliveChair,
+      roughness: 0.45,
+      envMapIntensity: 0.25,
+    });
     const floorMat = new THREE.MeshStandardMaterial({
       map: floorWood.map,
       roughnessMap: floorWood.roughnessMap,
-      roughness: 1,
-      envMapIntensity: 0,
+      roughness: 0.55,
+      envMapIntensity: 0.18,
     });
     const slateMat = new THREE.MeshStandardMaterial({ map: createSlateTexture(512), roughness: 0.7 });
-    // Walls: warm, muted olive-charcoal plaster — not pure black, not pure brown. Reads as
-    // "greenhouse-adjacent lab" rather than either a jewelry-ad void or a plain office wall.
+    // Walls: soft sage plaster, bright enough to read as a real sunlit room instead of a void.
     const wallPlaster = createPlasterTexture({
-      base: "#2b2c23",
-      dark: "#1a1b15",
-      light: "#454636",
+      base: PALETTE.sageWall,
+      dark: PALETTE.sageWallDark,
+      light: PALETTE.sageWallLight,
       size: 512,
       repeat: [3, 2],
       seed: 21,
@@ -358,14 +503,11 @@ function ClassroomScene() {
     const wallMat = new THREE.MeshStandardMaterial({
       map: wallPlaster.map,
       roughnessMap: wallPlaster.roughnessMap,
-      roughness: 0.95,
-      envMapIntensity: 0.08,
-      // A faint self-glow so the far stretches of wall (past the reach of any point light) still
-      // read as a dim surface instead of crushing to pure fog-black — a baseline visibility floor.
-      emissive: new THREE.Color(PALETTE.primary),
-      emissiveIntensity: 0.06,
+      roughness: 0.92,
+      envMapIntensity: 0.1,
     });
-    return { woodMat, metalMat, floorMat, slateMat, wallMat };
+    const ceilingMat = new THREE.MeshStandardMaterial({ color: "#e9e5d8", roughness: 0.95 });
+    return { woodMat, metalMat, chairMat, floorMat, slateMat, wallMat, ceilingMat };
   }, []);
 
   // Slight per-desk position/rotation jitter so the row reads as real furniture, not a grid of
@@ -399,20 +541,42 @@ function ClassroomScene() {
        * what actually fixes "everything past the furniture is just black": there was no room here
        * before, just floating objects in the fog. */}
       <mesh position={[-7, 4, -2]} rotation={[0, Math.PI / 2, 0]} material={materials.wallMat} receiveShadow>
-        <planeGeometry args={[20, 8]} />
+        <planeGeometry args={[30, 8]} />
       </mesh>
       <mesh position={[7, 4, -2]} rotation={[0, -Math.PI / 2, 0]} material={materials.wallMat} receiveShadow>
-        <planeGeometry args={[20, 8]} />
+        <planeGeometry args={[30, 8]} />
       </mesh>
-      <mesh position={[0, 8, -2]} rotation={[Math.PI / 2, 0, 0]} material={materials.wallMat} receiveShadow>
-        <planeGeometry args={[14, 20]} />
+      <mesh position={[0, 8, -2]} rotation={[Math.PI / 2, 0, 0]} material={materials.ceilingMat} receiveShadow>
+        <planeGeometry args={[14, 30]} />
       </mesh>
 
-      {/* Potted plants — the biophilic counterweight to the gold/wine palette: real green, real
-       * life, not just another metal-and-varnish surface. */}
+      {/* Ceiling fixtures: a long linear pendant light and a small projector, both mundane real-room
+       * details that do a lot of work to sell "this is a real classroom, not a stage set." */}
+      <mesh position={[0, 7.4, -2]}>
+        <boxGeometry args={[5, 0.08, 0.18]} />
+        <meshStandardMaterial color="#f7f4ea" emissive="#fff6df" emissiveIntensity={1.4} roughness={0.4} />
+      </mesh>
+      <group position={[0, 7.85, -0.5]}>
+        <mesh castShadow>
+          <boxGeometry args={[0.4, 0.22, 0.28]} />
+          <meshStandardMaterial color="#e8e5da" roughness={0.6} />
+        </mesh>
+        <mesh position={[0, -0.14, 0.08]}>
+          <cylinderGeometry args={[0.06, 0.08, 0.08, 16]} />
+          <meshStandardMaterial color="#2a2b26" roughness={0.4} />
+        </mesh>
+      </group>
+
+      {/* Potted plants — the biophilic counterweight to the noir gold/wine palette used elsewhere:
+       * real green, real life, not just another metal-and-varnish surface. */}
       <PottedPlant position={[-6.35, 0, -3.35]} scale={1.05} />
       <PottedPlant position={[-6.35, 0, -0.35]} scale={0.95} />
       <PottedPlant position={[6.1, 0, -6.2]} scale={1.3} />
+
+      {/* Wall décor: a clock and two botanical posters, echoing the reference photo's wall-dressing */}
+      <WallClock position={[-1.6, 4.6, -5.95]} />
+      <Poster position={[-4.4, 3.1, -5.95]} label={"PLANTES\nAROMÀTIQUES"} />
+      <Poster position={[4.3, 3.1, -5.95]} label={"NATURA · CIÈNCIA\nFUTUR"} />
 
       {/* Blackboard, real chalk-slate texture instead of a flat fill */}
       <mesh position={[0, 3.2, -6]} material={materials.slateMat} receiveShadow>
@@ -422,15 +586,17 @@ function ClassroomScene() {
         <planeGeometry args={[7, 0.06]} />
         <meshStandardMaterial color={PALETTE.accent} emissive={PALETTE.accent} emissiveIntensity={1.2} />
       </mesh>
-      {/* Chalk molecule sketch on the board — a small nod to the subject matter */}
-      <mesh position={[-2.6, 4, -5.93]}>
-        <ringGeometry args={[0.28, 0.32, 24]} />
-        <meshBasicMaterial color={PALETTE.accent} transparent opacity={0.22} />
+      {/* Chalk molecule sketch + formula — legible chalk text instead of an abstract ring pair */}
+      <mesh position={[-2.4, 4, -5.93]} rotation={[0, 0, 0.2]}>
+        <ringGeometry args={[0.42, 0.46, 6]} />
+        <meshBasicMaterial color="#eef1e8" transparent opacity={0.55} side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[-1.9, 3.7, -5.93]}>
-        <ringGeometry args={[0.18, 0.21, 24]} />
-        <meshBasicMaterial color={PALETTE.accent} transparent opacity={0.18} />
-      </mesh>
+      <Text position={[-1, 4, -5.93]} fontSize={0.32} color="#eef1e8" anchorX="left" anchorY="middle">
+        {"β-Pineno"}
+      </Text>
+      <Text position={[-1, 3.5, -5.93]} fontSize={0.24} color="#c9d0bf" anchorX="left" anchorY="middle">
+        {"C10H16"}
+      </Text>
 
       {/* Teacher's desk, larger, facing the class — pushed back near the board so the camera's
        * flight path (which runs straight down the center aisle) never grazes it at close range. */}
@@ -453,6 +619,7 @@ function ClassroomScene() {
           rotationY={d.rotationY}
           woodMat={materials.woodMat}
           metalMat={materials.metalMat}
+          chairMat={materials.chairMat}
         />
       ))}
 
@@ -461,31 +628,34 @@ function ClassroomScene() {
       <Window position={[-6.9, 2.8, 0]} />
 
       {/* Soft grounding contact shadow under the furniture — cheap, reads as ambient occlusion */}
-      <ContactShadows position={[0, 0.001, -2]} opacity={0.55} scale={14} blur={2.4} far={3.5} color="#000000" />
+      <ContactShadows position={[0, 0.001, -2]} opacity={0.4} scale={14} blur={2.4} far={3.5} color="#000000" />
+
+      {/* Soft, even daylight fill bounced around the room — the reference photo has no visible
+       * dramatic beam, just a bright, evenly-lit room, so the fill light matters more than any
+       * single "hero" light source here. */}
+      <hemisphereLight args={["#eef2e6", PALETTE.oakDark, 0.7]} />
 
       {/* Invisible aim point for the window light — keeps the target in the same local space as the group. */}
       <object3D ref={sunTargetRef} position={[1, 0.6, -2]} />
-      {/* Late-afternoon light pouring through the windows: a spotlight, not a directional sun, so it
-       * naturally falls off with distance — bright near the glass, dim and moody by the back wall. */}
+      {/* Daylight through the windows: wide and soft rather than a narrow dramatic shaft, so it
+       * reads as "sunlit room" instead of "single spotlight in the dark." */}
       <spotLight
         ref={sunRef}
         position={[-6.2, 4.6, -1.4]}
-        intensity={16}
-        distance={11}
-        angle={0.6}
-        penumbra={0.65}
-        decay={2}
-        color="#ffe6b8"
+        intensity={26}
+        distance={16}
+        angle={0.85}
+        penumbra={0.85}
+        decay={1.6}
+        color="#fff6e2"
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0004}
-        shadow-radius={4}
+        shadow-radius={5}
       />
 
-      <LightBeam position={[0, 9, 1]} rotation={[Math.PI, 0, 0]} length={11} radius={2.6} opacity={0.14} />
-      <pointLight position={[0, 4, 2]} intensity={6} color={PALETTE.accent} />
-      <pointLight position={[0, 2.6, -4.6]} intensity={1.8} color={PALETTE.secondary} />
-      <spotLight position={[0, 8, 4]} intensity={5} angle={0.5} penumbra={0.7} color="#fff4dd" />
+      <pointLight position={[0, 4, 2]} intensity={5} color="#fff4de" />
+      <pointLight position={[0, 3, -5]} intensity={4} color="#fff4de" />
     </group>
   );
 }
@@ -788,19 +958,23 @@ export default function Scene() {
       camera={{ fov: 55, near: 0.1, far: 120, position: [0, 1.2, STATIONS.hero] }}
     >
       <color attach="background" args={[PALETTE.fog]} />
-      <fogExp2 attach="fog" args={[PALETTE.fog, 0.034]} />
-      <ambientLight intensity={0.32} />
+      <fogExp2 attach="fog" args={[PALETTE.fog, 0.026]} />
+      <ambientLight intensity={0.4} />
       <Environment preset="studio" background={false} environmentIntensity={0.25} />
       <CameraRig />
       <TravelLight />
       <Starfield />
+      <TransitGlow z={(STATIONS.hero + STATIONS.classroom) / 2} color={PALETTE.primary} />
+      <TransitGlow z={(STATIONS.classroom + STATIONS.lab) / 2} color={PALETTE.leafBright} />
+      <TransitGlow z={(STATIONS.lab + STATIONS.molecule) / 2} color={PALETTE.secondary} />
+      <TransitGlow z={(STATIONS.molecule + STATIONS.horizon) / 2} color={PALETTE.accent} />
       <ClassroomScene />
       <LabScene />
       <MoleculeScene />
       <HorizonScene />
       <EffectComposer multisampling={0}>
         <Bloom mipmapBlur luminanceThreshold={0.45} luminanceSmoothing={0.3} intensity={0.5} radius={0.75} />
-        <Vignette eskil={false} offset={0.22} darkness={0.6} />
+        <Vignette eskil={false} offset={0.3} darkness={0.45} />
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       </EffectComposer>
     </Canvas>

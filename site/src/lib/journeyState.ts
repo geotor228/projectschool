@@ -25,18 +25,20 @@ export const CHAPTERS = {
   closing: [0.88, 1] as const,
 };
 
-/** Local 0→1 progress within [start,end], fading in/out over `edge` fraction of the range.
- * The very first chapter (start === 0) is fully visible from the top of the page instead
- * of fading in from nothing — there is nothing before it to fade in from. */
+/** Opacity for a chapter spanning [start,end], fading in/out over a fixed absolute slice of
+ * progress (not a fraction of the chapter's own width). Chapters in CHAPTERS are contiguous
+ * (one ends exactly where the next begins), so fading each one strictly inside its own [start,end]
+ * meant both the outgoing and incoming chapter hit zero opacity at the exact same instant — a
+ * blank-text beat at every chapter change. Fading `edge` past both ends instead makes adjacent
+ * chapters genuinely overlap (each sits at ~50% right at the shared boundary), a real crossfade
+ * instead of a cut to nothing. The very first chapter (start === 0) is fully visible from the
+ * top of the page instead of fading in from nothing — there is nothing before it to fade in from. */
 export function chapterOpacity(
   progress: number,
   [start, end]: readonly [number, number],
-  edge = 0.18,
+  edge = 0.035,
 ): number {
-  const span = end - start;
-  const local = (progress - start) / span;
-  if (local < 0 || local > 1) return 0;
-  const fadeIn = start <= 0 ? 1 : Math.min(1, local / edge);
-  const fadeOut = Math.min(1, (1 - local) / edge);
+  const fadeIn = start <= 0 ? 1 : Math.min(1, Math.max(0, (progress - (start - edge)) / (2 * edge)));
+  const fadeOut = Math.min(1, Math.max(0, (end + edge - progress) / (2 * edge)));
   return Math.min(fadeIn, fadeOut);
 }
