@@ -153,6 +153,115 @@ export function createWoodTexture({ base, dark, light, size = 512, repeat = [1, 
   return { map, roughnessMap, normalMap };
 }
 
+type ParquetOptions = {
+  base: string;
+  dark: string;
+  light: string;
+  size?: number;
+  repeat?: [number, number];
+  seed?: number;
+};
+
+/** Classic basket-weave wood parquet: a grid of square blocks, each made of two parallel planks,
+ * alternating orientation checkerboard-style block to block — the traditional old-schoolhouse
+ * parquet floor, not the long continuous floorboards a plain plank texture reads as. */
+export function createParquetTexture({ base, dark, light, size = 512, repeat = [1, 1], seed = 1 }: ParquetOptions) {
+  const { canvas, ctx } = makeCanvas(size);
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, size, size);
+
+  const cells = 8;
+  const cell = size / cells;
+  const gap = Math.max(1, cell * 0.045);
+
+  const drawGrain = (x: number, y: number, w: number, h: number, vertical: boolean, ci: number, cj: number) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+    const lines = 5;
+    ctx.globalAlpha = 0.12;
+    ctx.strokeStyle = hash(ci, cj, seed + 5) > 0.5 ? dark : light;
+    ctx.lineWidth = 1;
+    for (let k = 0; k < lines; k++) {
+      const t = (k + 0.5) / lines;
+      ctx.beginPath();
+      if (vertical) {
+        const lx = x + t * w + (hash(ci, cj + k, seed) - 0.5) * w * 0.15;
+        ctx.moveTo(lx, y);
+        ctx.lineTo(lx, y + h);
+      } else {
+        const ly = y + t * h + (hash(ci + k, cj, seed) - 0.5) * h * 0.15;
+        ctx.moveTo(x, ly);
+        ctx.lineTo(x + w, ly);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  };
+
+  for (let cy = 0; cy < cells; cy++) {
+    for (let cx = 0; cx < cells; cx++) {
+      const bx = cx * cell;
+      const by = cy * cell;
+      const horizontal = (cx + cy) % 2 === 0;
+      const t = hash(cx, cy, seed);
+      ctx.fillStyle = t > 0.66 ? light : t > 0.33 ? base : dark;
+
+      if (horizontal) {
+        const stripH = (cell - gap) / 2;
+        ctx.fillRect(bx, by, cell, stripH);
+        ctx.fillRect(bx, by + stripH + gap, cell, stripH);
+        drawGrain(bx, by, cell, stripH, false, cx, cy);
+        drawGrain(bx, by + stripH + gap, cell, stripH, false, cx, cy + 1);
+      } else {
+        const stripW = (cell - gap) / 2;
+        ctx.fillRect(bx, by, stripW, cell);
+        ctx.fillRect(bx + stripW + gap, by, stripW, cell);
+        drawGrain(bx, by, stripW, cell, true, cx, cy);
+        drawGrain(bx + stripW + gap, by, stripW, cell, true, cx + 1, cy);
+      }
+
+      ctx.strokeStyle = "rgba(0,0,0,0.25)";
+      ctx.lineWidth = Math.max(1, gap);
+      ctx.strokeRect(bx + gap / 2, by + gap / 2, cell - gap, cell - gap);
+    }
+  }
+
+  speckle(ctx, size, seed + 80, 0.002, light, [0.02, 0.06]);
+  speckle(ctx, size, seed + 90, 0.0015, dark, [0.03, 0.08]);
+
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(repeat[0], repeat[1]);
+
+  // Roughness/height map: the same block seams as dark grooves, independent of the color variation,
+  // so the blocks read as physically separate pieces under angled light, not just a painted pattern.
+  const rough = makeCanvas(size);
+  rough.ctx.fillStyle = "#c8c8c8";
+  rough.ctx.fillRect(0, 0, size, size);
+  for (let cy = 0; cy < cells; cy++) {
+    for (let cx = 0; cx < cells; cx++) {
+      const bx = cx * cell;
+      const by = cy * cell;
+      rough.ctx.strokeStyle = "#4a4a4a";
+      rough.ctx.lineWidth = Math.max(1, gap);
+      rough.ctx.strokeRect(bx + gap / 2, by + gap / 2, cell - gap, cell - gap);
+    }
+  }
+  speckle(rough.ctx, size, seed + 100, 0.003, "#e0e0e0", [0.04, 0.1]);
+  const roughnessMap = new THREE.CanvasTexture(rough.canvas);
+  roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping;
+  roughnessMap.repeat.set(repeat[0], repeat[1]);
+
+  const normalMap = new THREE.CanvasTexture(heightToNormalMap(rough.canvas, 1.8));
+  normalMap.wrapS = normalMap.wrapT = THREE.RepeatWrapping;
+  normalMap.repeat.set(repeat[0], repeat[1]);
+
+  return { map, roughnessMap, normalMap };
+}
+
 type PlasterOptions = {
   base: string;
   dark: string;

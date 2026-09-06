@@ -9,6 +9,7 @@ import * as THREE from "three";
 import { journeyState } from "@/lib/journeyState";
 import {
   createWoodTexture,
+  createParquetTexture,
   createSlateTexture,
   createPlasterTexture,
   createAcousticTileTexture,
@@ -116,6 +117,54 @@ function useStationVisibility(ref: React.RefObject<THREE.Group | null>, stationZ
     if (!ref.current) return;
     const cameraZ = THREE.MathUtils.lerp(STATIONS.hero, STATIONS.horizon, journeyState.progress);
     ref.current.visible = Math.abs(cameraZ - stationZ) < radius;
+  });
+}
+
+type FadeState = THREE.Material & { __baseOpacity?: number; __baseTransparent?: boolean; __baseDepthWrite?: boolean };
+
+/** Like useStationVisibility, but dissolves the set instead of flipping it off. The camera's path
+ * runs straight *through* a room, not up to it: it passes through the classroom's blackboard and
+ * the wall behind it on the way to the lab. With a hard visibility flip that means a stretch where
+ * an opaque wall is a foot from the lens and fills the entire frame — a flat green screen behind
+ * the chapter text. Fading the whole set out over the last couple of units before the camera would
+ * reach that wall turns it into the room dissolving behind you as you leave it.
+ *
+ * Original opacity/transparent/depthWrite are cached per material and restored at full strength,
+ * so materials that are deliberately semi-transparent (chalk marks, glow) keep their own look. */
+function useStationDissolve(
+  ref: React.RefObject<THREE.Group | null>,
+  stationZ: number,
+  { inAt = 13.5, outAt = 6, fade = 2.5 }: { inAt?: number; outAt?: number; fade?: number } = {},
+) {
+  useFrame(() => {
+    const group = ref.current;
+    if (!group) return;
+    const cameraZ = THREE.MathUtils.lerp(STATIONS.hero, STATIONS.horizon, journeyState.progress);
+    // Positive while the camera is still short of the station, negative once it's past.
+    const ahead = cameraZ - stationZ;
+    const t =
+      ahead >= 0
+        ? THREE.MathUtils.clamp((inAt - ahead) / fade, 0, 1)
+        : THREE.MathUtils.clamp((outAt + ahead) / fade, 0, 1);
+
+    group.visible = t > 0.01;
+    if (!group.visible) return;
+
+    group.traverse((object) => {
+      const material = (object as THREE.Mesh).material;
+      if (!material) return;
+      for (const m of Array.isArray(material) ? material : [material]) {
+        const mat = m as FadeState;
+        if (mat.__baseOpacity === undefined) {
+          mat.__baseOpacity = mat.opacity;
+          mat.__baseTransparent = mat.transparent;
+          mat.__baseDepthWrite = mat.depthWrite;
+        }
+        mat.opacity = mat.__baseOpacity * t;
+        mat.transparent = t < 1 ? true : mat.__baseTransparent!;
+        mat.depthWrite = t < 1 ? false : mat.__baseDepthWrite!;
+      }
+    });
   });
 }
 
@@ -465,7 +514,7 @@ function PottedPlant({ position, scale = 1 }: { position: THREE.Vector3Tuple; sc
 
 function ClassroomScene() {
   const groupRef = useRef<THREE.Group>(null);
-  useStationVisibility(groupRef, STATIONS.classroom);
+  useStationDissolve(groupRef, STATIONS.classroom);
 
   // Shared material + texture instances (created once, reused across every desk/chair mesh)
   // rather than one meshStandardMaterial per box, per the threejs "share material instances" guideline.
@@ -480,13 +529,12 @@ function ClassroomScene() {
       repeat: [1, 1],
       seed: 3,
     });
-    const floorWood = createWoodTexture({
+    const floorWood = createParquetTexture({
       base: PALETTE.oak,
       dark: PALETTE.oakDark,
       light: PALETTE.oakLight,
       size: 512,
-      repeat: [5, 4],
-      plankLines: true,
+      repeat: [4, 4],
       seed: 11,
     });
     const woodMat = new THREE.MeshStandardMaterial({
@@ -513,8 +561,8 @@ function ClassroomScene() {
       roughnessMap: floorWood.roughnessMap,
       // A much weaker normal map than the desk's: viewed from a distance at the shallow, raking
       // angle the floor is always seen at, the same per-pixel bump that reads as nice grain up
-      // close instead throws hard dark creases along every plank seam — that's the "black spots"
-      // on the floor. A near-flat normal keeps a hint of relief without the exaggerated shading.
+      // close instead throws hard dark creases along every parquet-block seam — that's the "black
+      // spots" on the floor. A near-flat normal keeps a hint of relief without exaggerated shading.
       normalMap: floorWood.normalMap,
       normalScale: new THREE.Vector2(0.08, 0.08),
       roughness: 0.55,
@@ -635,19 +683,35 @@ function ClassroomScene() {
         </mesh>
       </group>
 
+      {/* Back wall behind the blackboard — this was open space before, so everything past the board
+       * (and past the cork board and plant beside it) read as a flat black void. Split into two
+       * planes only so the band above the board can be lit and shadowed separately from the strip
+       * below it; together they close the wall off floor to ceiling. */}
+      <mesh position={[0, 4.8, -6.5]} material={materials.wallMat} receiveShadow>
+        <planeGeometry args={[13.8, 6.4]} />
+      </mesh>
+      <mesh position={[0, 0.8, -6.5]} material={materials.wallMat} receiveShadow>
+        <planeGeometry args={[13.8, 1.6]} />
+      </mesh>
+      <mesh position={[0, 0.07, -6.47]} material={materials.trimMat}>
+        <boxGeometry args={[13.8, 0.14, 0.04]} />
+      </mesh>
+
       {/* Potted plants — the biophilic counterweight to the noir gold/wine palette used elsewhere:
        * real green, real life, not just another metal-and-varnish surface. */}
       <PottedPlant position={[-6.35, 0, -3.35]} scale={1.05} />
       <PottedPlant position={[-6.35, 0, -0.35]} scale={0.95} />
       <PottedPlant position={[6.1, 0, -6.2]} scale={1.3} />
 
-      {/* Wall decor: a clock, two botanical posters, and a cork board — the board doesn't need to
-       * fill the whole wall, so there's real room on either side of it for other things. */}
-      <WallClock position={[0, 6.3, -5.95]} />
-      <Poster position={[-4.8, 3.1, -5.95]} label={"PLANTES\nAROMÀTIQUES"} />
-      <Poster position={[4.7, 3.1, -5.95]} label={"NATURA · CIÈNCIA\nFUTUR"} />
+      {/* Wall decor: a clock and two botanical posters, mounted on the right side wall instead of
+       * flanking the board — that keeps the newly-solid back wall reading as an actual wall, not
+       * another surface to pin things to. */}
+      <WallClock position={[6.85, 5.0, -1.8]} rotationY={-Math.PI / 2} />
+      <Poster position={[6.85, 3.1, -3.4]} rotationY={-Math.PI / 2} label={"PLANTES\nAROMÀTIQUES"} />
+      <Poster position={[6.85, 3.1, -0.2]} rotationY={-Math.PI / 2} label={"NATURA · CIÈNCIA\nFUTUR"} />
 
-      {/* Cork board with pinned notes — the wall isn't just the board and two posters */}
+      {/* Cork board with pinned notes, still on the back wall near the corner — the board isn't the
+       * only thing on this wall */}
       <group position={[6.15, 3.0, -5.8]}>
         <mesh castShadow receiveShadow>
           <boxGeometry args={[1.3, 1.6, 0.06]} />
@@ -1244,7 +1308,9 @@ function LabDoor({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; ro
 
 function LabScene() {
   const groupRef = useRef<THREE.Group>(null);
-  useStationVisibility(groupRef, STATIONS.lab);
+  // Wider than the default: the classroom now dissolves out by the time the camera is 6 units past
+  // it (z -20), so the lab has to be on screen before that or there's a bare stretch between them.
+  useStationVisibility(groupRef, STATIONS.lab, 16);
 
   const flaskRef = useRef<THREE.Mesh>(null);
   useFrame((state) => {
