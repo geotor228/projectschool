@@ -43,16 +43,24 @@ const PALETTE = {
   leafDeep: "#3c6238",
   leafBright: "#6f9c4f",
   terracotta: "#8a4a34",
-  // Bright biophilic classroom repaint, matched directly to the reference photo: daylight, sage
-  // walls, warm oak — a deliberate departure from the noir gold/wine mood used in the other
-  // scenes. Those scenes keep their own dramatic lighting; this one reads like a real, lived-in,
-  // sunlit eco-classroom.
-  sageWall: "#aab89a",
-  sageWallDark: "#8b9a7c",
-  sageWallLight: "#c7d0b6",
-  oak: "#cdb188",
-  oakDark: "#a9885d",
-  oakLight: "#e3cda3",
+  // Modern European classroom: warm off-white walls, light natural oak, dark grey fittings. The
+  // walls were a saturated sage green and the wood a warm orange-oak, which together read as a
+  // styled 3D set rather than a room — a real teaching space is a warm neutral shell with the
+  // wood and the people supplying the color.
+  sageWall: "#e6e1d7",
+  sageWallDark: "#d3ccc0",
+  sageWallLight: "#f3efe8",
+  wainscot: "#cdc6b8",
+  // Light oak: warm, but well back from honey or orange. It has to sit a clear couple of stops
+  // under the off-white walls — when floor and walls land on the same value the room flattens into
+  // one beige mass with no sense of a floor at all.
+  oak: "#c3ab86",
+  oakDark: "#a68c66",
+  oakLight: "#d8c5a4",
+  // Furniture is a lighter, pinker beech than the floor oak, so desks read as separate newer timber.
+  deskWood: "#cdb590",
+  deskWoodDark: "#ab9270",
+  deskWoodLight: "#e0cdae",
   oliveChair: "#66754a",
   chalkGreen: "#3c4a3c",
   // Soft pastel palette for the closing "scent captured in a bottle" scene — warm peach and cool
@@ -518,13 +526,13 @@ function ClassroomScene() {
 
   // Shared material + texture instances (created once, reused across every desk/chair mesh)
   // rather than one meshStandardMaterial per box, per the threejs "share material instances" guideline.
-  // Bright warm-oak-and-sage repaint, matched to the reference photo — a deliberate departure from
-  // the dark noir palette used in the rest of the journey.
+  // Warm-neutral shell, light natural wood, dark grey fittings — a real modern teaching room
+  // rather than the styled sage-and-honey set this was before.
   const materials = useMemo(() => {
     const deskWood = createWoodTexture({
-      base: PALETTE.oak,
-      dark: PALETTE.oakDark,
-      light: PALETTE.oakLight,
+      base: PALETTE.deskWood,
+      dark: PALETTE.deskWoodDark,
+      light: PALETTE.deskWoodLight,
       size: 512,
       repeat: [1, 1],
       seed: 3,
@@ -534,42 +542,53 @@ function ClassroomScene() {
       dark: PALETTE.oakDark,
       light: PALETTE.oakLight,
       size: 512,
-      repeat: [4, 4],
+      // Six blocks of three boards per tile, tiled five times across a 14-unit floor: boards land
+      // at roughly 15cm wide, the size of real parquet, instead of oversized slabs.
+      repeat: [5, 5],
       seed: 11,
     });
     const woodMat = new THREE.MeshStandardMaterial({
       map: deskWood.map,
       roughnessMap: deskWood.roughnessMap,
       normalMap: deskWood.normalMap,
-      normalScale: new THREE.Vector2(0.6, 0.6),
-      roughness: 0.5,
-      envMapIntensity: 0.2,
+      normalScale: new THREE.Vector2(0.45, 0.45),
+      // Desk tops are varnished: low enough roughness to catch a soft sheen off the windows and
+      // the ceiling fitting, which is most of what makes a surface read as a real material.
+      roughness: 0.38,
+      envMapIntensity: 0.25,
     });
     const metalMat = new THREE.MeshStandardMaterial({
-      color: "#2a2b26",
-      metalness: 0.6,
-      roughness: 0.5,
-      envMapIntensity: 0.4,
+      color: "#3a3c3e",
+      metalness: 0.55,
+      roughness: 0.42,
+      envMapIntensity: 0.5,
     });
+    // Chairs: bent light-beech ply on the same dark frames, the standard of every modern European
+    // classroom — the flat olive plastic was the single most toy-like material in the room.
     const chairMat = new THREE.MeshStandardMaterial({
-      color: PALETTE.oliveChair,
-      roughness: 0.45,
+      map: deskWood.map,
+      roughnessMap: deskWood.roughnessMap,
+      normalMap: deskWood.normalMap,
+      normalScale: new THREE.Vector2(0.35, 0.35),
+      color: "#d8bf95",
+      roughness: 0.42,
       envMapIntensity: 0.25,
     });
     const floorMat = new THREE.MeshStandardMaterial({
       map: floorWood.map,
       roughnessMap: floorWood.roughnessMap,
-      // A much weaker normal map than the desk's: viewed from a distance at the shallow, raking
-      // angle the floor is always seen at, the same per-pixel bump that reads as nice grain up
-      // close instead throws hard dark creases along every parquet-block seam — that's the "black
-      // spots" on the floor. A near-flat normal keeps a hint of relief without exaggerated shading.
+      // Kept very weak on purpose: the floor is only ever seen at a raking angle, where a strong
+      // per-pixel bump turns every seam into a hard dark crease.
       normalMap: floorWood.normalMap,
-      normalScale: new THREE.Vector2(0.08, 0.08),
-      roughness: 0.55,
-      envMapIntensity: 0.18,
+      normalScale: new THREE.Vector2(0.06, 0.06),
+      // Satin varnish rather than raw timber — this is what gives the soft, wide highlight stretched
+      // along the floor under the windows and the ceiling light.
+      roughness: 0.42,
+      envMapIntensity: 0.35,
     });
     const slateMat = new THREE.MeshStandardMaterial({ map: createSlateTexture(512), roughness: 0.7 });
-    // Walls: soft sage plaster, bright enough to read as a real sunlit room instead of a void.
+    // Walls: warm off-white plaster, matte. Not white — there's enough warm grey in it to hold a
+    // gradient across the room instead of blowing out flat.
     const wallPlaster = createPlasterTexture({
       base: PALETTE.sageWall,
       dark: PALETTE.sageWallDark,
@@ -582,15 +601,27 @@ function ClassroomScene() {
       map: wallPlaster.map,
       roughnessMap: wallPlaster.roughnessMap,
       normalMap: wallPlaster.normalMap,
-      normalScale: new THREE.Vector2(0.35, 0.35),
-      roughness: 0.92,
-      envMapIntensity: 0.1,
+      normalScale: new THREE.Vector2(0.28, 0.28),
+      roughness: 0.95,
+      envMapIntensity: 0.08,
     });
-    const ceilingTiles = createAcousticTileTexture(512, 4, "#eee9db");
+    // The lower metre of a school wall is always a harder, slightly darker finish — scuff-resistant
+    // paint or lining. It also stops the room reading as one flat tone floor to ceiling.
+    const wainscotMat = new THREE.MeshStandardMaterial({
+      map: wallPlaster.map,
+      roughnessMap: wallPlaster.roughnessMap,
+      normalMap: wallPlaster.normalMap,
+      normalScale: new THREE.Vector2(0.22, 0.22),
+      color: PALETTE.wainscot,
+      roughness: 0.72,
+      envMapIntensity: 0.14,
+    });
+    const ceilingTiles = createAcousticTileTexture(512, 4, "#f0ece4");
     ceilingTiles.repeat.set(3.5, 7.5);
+    ceilingTiles.anisotropy = 8;
     const ceilingMat = new THREE.MeshStandardMaterial({ map: ceilingTiles, roughness: 0.95 });
-    const trimMat = new THREE.MeshStandardMaterial({ color: "#4a3a26", roughness: 0.55 });
-    return { woodMat, metalMat, chairMat, floorMat, slateMat, wallMat, ceilingMat, trimMat };
+    const trimMat = new THREE.MeshStandardMaterial({ color: "#b9b0a2", roughness: 0.5 });
+    return { woodMat, metalMat, chairMat, floorMat, slateMat, wallMat, wainscotMat, ceilingMat, trimMat };
   }, []);
 
   // Slight per-desk position/rotation jitter so the row reads as real furniture, not a grid of
@@ -633,18 +664,55 @@ function ClassroomScene() {
         <planeGeometry args={[14, 30]} />
       </mesh>
 
+      {/* Wainscot: the lower metre of both side walls in the harder, slightly darker finish every
+       * school corridor and classroom has, capped with a slim rail. Two tones stacked floor to
+       * ceiling is most of what separates a real painted room from one flat extruded color. */}
+      <mesh position={[-6.98, 0.62, -2]} rotation={[0, Math.PI / 2, 0]} material={materials.wainscotMat} receiveShadow>
+        <planeGeometry args={[30, 0.96]} />
+      </mesh>
+      {/* The right wall's run is broken either side of the door at z 3.45-4.55: wainscot, rail and
+       * skirting all die into a door casing in a real room rather than running across the leaf. */}
+      <mesh position={[6.98, 0.62, -6.85]} rotation={[0, -Math.PI / 2, 0]} material={materials.wainscotMat} receiveShadow>
+        <planeGeometry args={[20.3, 0.96]} />
+      </mesh>
+      <mesh position={[6.98, 0.62, 8.85]} rotation={[0, -Math.PI / 2, 0]} material={materials.wainscotMat} receiveShadow>
+        <planeGeometry args={[8.3, 0.96]} />
+      </mesh>
+      <mesh position={[0, 0.62, -6.48]} material={materials.wainscotMat} receiveShadow>
+        <planeGeometry args={[13.8, 0.96]} />
+      </mesh>
+      <mesh position={[-6.95, 1.12, -2]} material={materials.trimMat} castShadow>
+        <boxGeometry args={[0.05, 0.05, 30]} />
+      </mesh>
+      <mesh position={[6.95, 1.12, -6.85]} material={materials.trimMat} castShadow>
+        <boxGeometry args={[0.05, 0.05, 20.3]} />
+      </mesh>
+      <mesh position={[6.95, 1.12, 8.85]} material={materials.trimMat} castShadow>
+        <boxGeometry args={[0.05, 0.05, 8.3]} />
+      </mesh>
+      <mesh position={[0, 1.12, -6.45]} material={materials.trimMat} castShadow>
+        <boxGeometry args={[13.8, 0.05, 0.05]} />
+      </mesh>
+
       {/* Baseboard trim along both walls — a small thing, but a wall that just ends flush into
        * the floor with no transition is one of the fastest tells of a CG room. */}
-      <mesh position={[-6.97, 0.07, -2]} material={materials.trimMat}>
-        <boxGeometry args={[0.04, 0.14, 30]} />
+      <mesh position={[-6.95, 0.07, -2]} material={materials.trimMat}>
+        <boxGeometry args={[0.06, 0.14, 30]} />
       </mesh>
-      <mesh position={[6.97, 0.07, -2]} material={materials.trimMat}>
-        <boxGeometry args={[0.04, 0.14, 30]} />
+      <mesh position={[6.95, 0.07, -6.85]} material={materials.trimMat}>
+        <boxGeometry args={[0.06, 0.14, 20.3]} />
+      </mesh>
+      <mesh position={[6.95, 0.07, 8.85]} material={materials.trimMat}>
+        <boxGeometry args={[0.06, 0.14, 8.3]} />
+      </mesh>
+      <mesh position={[0, 0.07, -6.44]} material={materials.trimMat}>
+        <boxGeometry args={[13.8, 0.14, 0.06]} />
       </mesh>
 
       {/* Light switch + outlet — mundane wall hardware nobody designs on purpose but every real
-       * room has, and its absence is part of why a bare wall reads as a stage set. */}
-      <group position={[6.97, 1.15, 2]} rotation={[0, Math.PI / 2, 0]}>
+       * room has, and its absence is part of why a bare wall reads as a stage set. Sat proud of the
+       * wainscot rather than buried behind it. */}
+      <group position={[6.93, 1.4, 2]} rotation={[0, Math.PI / 2, 0]}>
         <mesh>
           <boxGeometry args={[0.09, 0.14, 0.012]} />
           <meshStandardMaterial color="#f2efe6" roughness={0.5} />
@@ -654,7 +722,7 @@ function ClassroomScene() {
           <meshStandardMaterial color="#dedacc" roughness={0.4} />
         </mesh>
       </group>
-      <group position={[6.97, 0.28, 2.6]} rotation={[0, Math.PI / 2, 0]}>
+      <group position={[6.93, 0.28, 2.6]} rotation={[0, Math.PI / 2, 0]}>
         <mesh>
           <boxGeometry args={[0.1, 0.1, 0.012]} />
           <meshStandardMaterial color="#f2efe6" roughness={0.5} />
@@ -692,9 +760,6 @@ function ClassroomScene() {
       </mesh>
       <mesh position={[0, 0.8, -6.5]} material={materials.wallMat} receiveShadow>
         <planeGeometry args={[13.8, 1.6]} />
-      </mesh>
-      <mesh position={[0, 0.07, -6.47]} material={materials.trimMat}>
-        <boxGeometry args={[13.8, 0.14, 0.04]} />
       </mesh>
 
       {/* Potted plants — the biophilic counterweight to the noir gold/wine palette used elsewhere:
@@ -904,13 +969,23 @@ function ClassroomScene() {
         </mesh>
       </group>
 
-      {/* Soft grounding contact shadow under the furniture — cheap, reads as ambient occlusion */}
-      <ContactShadows position={[0, 0.001, -2]} opacity={0.4} scale={14} blur={2.4} far={3.5} color="#000000" />
+      {/* Soft grounding contact shadow under the furniture. Higher resolution and a wider blur than
+       * before, and warm-grey rather than pure black: a real shadow on a pale wood floor is a warm
+       * desaturated grey, and black contact shadows are a large part of why a light floor reads as
+       * a render. This is what puts the desks and chairs on the floor instead of hovering over it. */}
+      <ContactShadows
+        position={[0, 0.002, -2]}
+        opacity={0.58}
+        scale={16}
+        blur={3}
+        far={4}
+        resolution={1024}
+        color="#4a4034"
+      />
 
-      {/* Soft, even daylight fill bounced around the room — the reference photo has no visible
-       * dramatic beam, just a bright, evenly-lit room, so the fill light matters more than any
-       * single "hero" light source here. */}
-      <hemisphereLight args={["#eef2e6", PALETTE.oakDark, 0.7]} />
+      {/* Daylight bounce: cool sky from above, warm wood bounce from the floor. The upward tone was
+       * the old orange oak, which tinted the whole room amber from below. */}
+      <hemisphereLight args={["#eaf0f6", PALETTE.oakDark, 0.55]} />
 
       {/* Invisible aim point for the window light — keeps the target in the same local space as the group. */}
       <object3D ref={sunTargetRef} position={[1, 0.6, -2]} />
@@ -919,20 +994,25 @@ function ClassroomScene() {
       <spotLight
         ref={sunRef}
         position={[-6.2, 4.6, -1.4]}
-        intensity={26}
-        distance={16}
-        angle={0.85}
-        penumbra={0.85}
-        decay={1.6}
-        color="#fff6e2"
+        intensity={30}
+        distance={18}
+        angle={0.9}
+        penumbra={0.95}
+        decay={1.5}
+        // Daylight, not tungsten: the old #fff6e2 was warm enough to push the new off-white walls
+        // back towards cream. Near-neutral with the faintest warm cast keeps them reading as paint.
+        color="#fdfaf4"
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0004}
-        shadow-radius={5}
+        shadow-radius={6}
       />
 
-      <pointLight position={[0, 4, 2]} intensity={5} color="#fff4de" />
-      <pointLight position={[0, 3, -5]} intensity={4} color="#fff4de" />
+      {/* Interior fill, deliberately modest: with the hemisphere bounce and the window spot already
+       * lighting the room, more fill here just flattens it — the shading on the desks and the
+       * falloff toward the corners is what stops it looking like a flat-lit render. */}
+      <pointLight position={[0, 4, 2]} intensity={3.2} color="#fff4de" />
+      <pointLight position={[0, 3, -5]} intensity={2.6} color="#fff4de" />
     </group>
   );
 }

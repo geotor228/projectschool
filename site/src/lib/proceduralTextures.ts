@@ -162,102 +162,135 @@ type ParquetOptions = {
   seed?: number;
 };
 
-/** Classic basket-weave wood parquet: a grid of square blocks, each made of two parallel planks,
- * alternating orientation checkerboard-style block to block — the traditional old-schoolhouse
- * parquet floor, not the long continuous floorboards a plain plank texture reads as. */
+/** Blends two "#rrggbb" colors — used to keep parquet seams and plank tones as small steps off the
+ * base wood color, instead of the hard black outlines that read as a wireframe grid. */
+function mixHex(a: string, b: string, t: number): string {
+  const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
+  const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
+  const out = pa.map((v, i) => Math.round(v + (pb[i] - v) * t));
+  return `rgb(${out[0]},${out[1]},${out[2]})`;
+}
+
+/** Light-oak basket-weave parquet: square blocks of several narrow boards, orientation alternating
+ * block to block. Every edge here is a seam between two pieces of wood, so it's drawn as a hairline
+ * a couple of shades under the board it sits next to — never an outline. An earlier version stroked
+ * each block in 25%-black at three pixels wide, which at floor scale tiled into a thick black grid
+ * that read as an unfinished wireframe rather than a floor. Plank tone varies board by board and
+ * the grain runs along each board's length, which is what makes the pattern read as laid wood. */
 export function createParquetTexture({ base, dark, light, size = 512, repeat = [1, 1], seed = 1 }: ParquetOptions) {
   const { canvas, ctx } = makeCanvas(size);
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, size, size);
 
-  const cells = 8;
+  const cells = 6;
   const cell = size / cells;
-  const gap = Math.max(1, cell * 0.045);
+  const boards = 3;
+  const boardSize = cell / boards;
+  const seam = mixHex(base, dark, 0.55);
 
-  const drawGrain = (x: number, y: number, w: number, h: number, vertical: boolean, ci: number, cj: number) => {
+  const drawBoard = (x: number, y: number, w: number, h: number, vertical: boolean, id: number) => {
+    // Board tone: a small step either side of the base, never a flat swap to dark or light.
+    const lean = hash(id, 1, seed);
+    const amount = 0.1 + hash(id, 2, seed) * 0.3;
+    ctx.fillStyle = mixHex(base, lean > 0.5 ? light : dark, amount);
+    ctx.fillRect(x, y, w, h);
+
     ctx.save();
     ctx.beginPath();
     ctx.rect(x, y, w, h);
     ctx.clip();
-    const lines = 5;
-    ctx.globalAlpha = 0.12;
-    ctx.strokeStyle = hash(ci, cj, seed + 5) > 0.5 ? dark : light;
-    ctx.lineWidth = 1;
-    for (let k = 0; k < lines; k++) {
-      const t = (k + 0.5) / lines;
+
+    // Grain: fine wavy streaks running the length of the board.
+    const streaks = 7;
+    for (let k = 0; k < streaks; k++) {
+      const t = (k + 0.5) / streaks;
+      ctx.globalAlpha = 0.05 + hash(id, k + 10, seed) * 0.07;
+      ctx.strokeStyle = hash(id, k + 20, seed) > 0.5 ? dark : light;
+      ctx.lineWidth = 0.6 + hash(id, k + 30, seed) * 0.9;
       ctx.beginPath();
-      if (vertical) {
-        const lx = x + t * w + (hash(ci, cj + k, seed) - 0.5) * w * 0.15;
-        ctx.moveTo(lx, y);
-        ctx.lineTo(lx, y + h);
-      } else {
-        const ly = y + t * h + (hash(ci + k, cj, seed) - 0.5) * h * 0.15;
-        ctx.moveTo(x, ly);
-        ctx.lineTo(x + w, ly);
+      const span = vertical ? h : w;
+      const segments = 5;
+      for (let s = 0; s <= segments; s++) {
+        const along = (s / segments) * span;
+        const wobble = Math.sin(s * 1.6 + k * 0.9 + hash(id, s, seed) * 5) * (vertical ? w : h) * 0.05;
+        const across = (vertical ? x + t * w : y + t * h) + wobble;
+        const px = vertical ? across : x + along;
+        const py = vertical ? y + along : across;
+        if (s === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
       }
       ctx.stroke();
     }
     ctx.restore();
+    ctx.globalAlpha = 1;
+
+    // Hairline seam on the two edges that butt against the neighbouring board.
+    ctx.strokeStyle = seam;
+    ctx.globalAlpha = 0.4;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (vertical) {
+      ctx.moveTo(x + 0.5, y);
+      ctx.lineTo(x + 0.5, y + h);
+    } else {
+      ctx.moveTo(x, y + 0.5);
+      ctx.lineTo(x + w, y + 0.5);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   };
 
   for (let cy = 0; cy < cells; cy++) {
     for (let cx = 0; cx < cells; cx++) {
       const bx = cx * cell;
       const by = cy * cell;
-      const horizontal = (cx + cy) % 2 === 0;
-      const t = hash(cx, cy, seed);
-      ctx.fillStyle = t > 0.66 ? light : t > 0.33 ? base : dark;
-
-      if (horizontal) {
-        const stripH = (cell - gap) / 2;
-        ctx.fillRect(bx, by, cell, stripH);
-        ctx.fillRect(bx, by + stripH + gap, cell, stripH);
-        drawGrain(bx, by, cell, stripH, false, cx, cy);
-        drawGrain(bx, by + stripH + gap, cell, stripH, false, cx, cy + 1);
-      } else {
-        const stripW = (cell - gap) / 2;
-        ctx.fillRect(bx, by, stripW, cell);
-        ctx.fillRect(bx + stripW + gap, by, stripW, cell);
-        drawGrain(bx, by, stripW, cell, true, cx, cy);
-        drawGrain(bx + stripW + gap, by, stripW, cell, true, cx + 1, cy);
+      const vertical = (cx + cy) % 2 === 0;
+      for (let b = 0; b < boards; b++) {
+        const id = (cy * cells + cx) * boards + b;
+        if (vertical) drawBoard(bx + b * boardSize, by, boardSize, cell, true, id);
+        else drawBoard(bx, by + b * boardSize, cell, boardSize, false, id);
       }
-
-      ctx.strokeStyle = "rgba(0,0,0,0.25)";
-      ctx.lineWidth = Math.max(1, gap);
-      ctx.strokeRect(bx + gap / 2, by + gap / 2, cell - gap, cell - gap);
     }
   }
 
-  speckle(ctx, size, seed + 80, 0.002, light, [0.02, 0.06]);
-  speckle(ctx, size, seed + 90, 0.0015, dark, [0.03, 0.08]);
+  speckle(ctx, size, seed + 80, 0.0015, light, [0.015, 0.045]);
+  speckle(ctx, size, seed + 90, 0.001, dark, [0.02, 0.05]);
 
   const map = new THREE.CanvasTexture(canvas);
   map.colorSpace = THREE.SRGBColorSpace;
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(repeat[0], repeat[1]);
+  // A floor is always seen at a grazing angle, where isotropic filtering smears it into mush.
+  map.anisotropy = 8;
 
-  // Roughness/height map: the same block seams as dark grooves, independent of the color variation,
-  // so the blocks read as physically separate pieces under angled light, not just a painted pattern.
+  // Roughness/height: soft, board-to-board variation in how worn the varnish is, plus the faintest
+  // dip at the seams. Deliberately no hard dark lines — those became embossed ridges in the normal
+  // map and threw a dark crease along every seam at grazing angles.
   const rough = makeCanvas(size);
-  rough.ctx.fillStyle = "#c8c8c8";
+  rough.ctx.fillStyle = "#b4b4b4";
   rough.ctx.fillRect(0, 0, size, size);
   for (let cy = 0; cy < cells; cy++) {
     for (let cx = 0; cx < cells; cx++) {
-      const bx = cx * cell;
-      const by = cy * cell;
-      rough.ctx.strokeStyle = "#4a4a4a";
-      rough.ctx.lineWidth = Math.max(1, gap);
-      rough.ctx.strokeRect(bx + gap / 2, by + gap / 2, cell - gap, cell - gap);
+      const vertical = (cx + cy) % 2 === 0;
+      for (let b = 0; b < boards; b++) {
+        const id = (cy * cells + cx) * boards + b;
+        const v = 168 + Math.round(hash(id, 40, seed) * 34);
+        rough.ctx.fillStyle = `rgb(${v},${v},${v})`;
+        if (vertical) rough.ctx.fillRect(cx * cell + b * boardSize, cy * cell, boardSize, cell);
+        else rough.ctx.fillRect(cx * cell, cy * cell + b * boardSize, cell, boardSize);
+      }
     }
   }
-  speckle(rough.ctx, size, seed + 100, 0.003, "#e0e0e0", [0.04, 0.1]);
+  speckle(rough.ctx, size, seed + 100, 0.002, "#d0d0d0", [0.03, 0.07]);
   const roughnessMap = new THREE.CanvasTexture(rough.canvas);
   roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping;
   roughnessMap.repeat.set(repeat[0], repeat[1]);
+  roughnessMap.anisotropy = 8;
 
-  const normalMap = new THREE.CanvasTexture(heightToNormalMap(rough.canvas, 1.8));
+  const normalMap = new THREE.CanvasTexture(heightToNormalMap(rough.canvas, 0.6));
   normalMap.wrapS = normalMap.wrapT = THREE.RepeatWrapping;
   normalMap.repeat.set(repeat[0], repeat[1]);
+  normalMap.anisotropy = 8;
 
   return { map, roughnessMap, normalMap };
 }
@@ -300,6 +333,7 @@ export function createPlasterTexture({ base, dark, light, size = 512, repeat = [
   map.colorSpace = THREE.SRGBColorSpace;
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(repeat[0], repeat[1]);
+  map.anisotropy = 8;
 
   const rough = makeCanvas(size);
   rough.ctx.fillStyle = "#cfcfcf";
@@ -309,10 +343,12 @@ export function createPlasterTexture({ base, dark, light, size = 512, repeat = [
   const roughnessMap = new THREE.CanvasTexture(rough.canvas);
   roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping;
   roughnessMap.repeat.set(repeat[0], repeat[1]);
+  roughnessMap.anisotropy = 8;
 
   const normalMap = new THREE.CanvasTexture(heightToNormalMap(rough.canvas, 1.1));
   normalMap.wrapS = normalMap.wrapT = THREE.RepeatWrapping;
   normalMap.repeat.set(repeat[0], repeat[1]);
+  normalMap.anisotropy = 8;
 
   return { map, roughnessMap, normalMap };
 }
@@ -327,9 +363,11 @@ export function createAcousticTileTexture(size = 512, tilesPerSide = 4, color = 
   speckle(ctx, size, 90, 0.02, "#00000022".slice(0, 7), [0.02, 0.05]);
   speckle(ctx, size, 91, 0.015, "#ffffff", [0.02, 0.05]);
 
+  // Seams between tiles are a shallow shadowed joint, not a drawn line: at 35% black and three
+  // pixels wide this tiled into a heavy grid across the ceiling that read as a wireframe overlay.
   const tile = size / tilesPerSide;
-  ctx.strokeStyle = "rgba(0,0,0,0.35)";
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(90,84,74,0.16)";
+  ctx.lineWidth = 1.5;
   for (let i = 0; i <= tilesPerSide; i++) {
     const p = i * tile;
     ctx.beginPath();
