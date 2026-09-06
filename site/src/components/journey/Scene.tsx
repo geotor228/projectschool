@@ -511,8 +511,12 @@ function ClassroomScene() {
     const floorMat = new THREE.MeshStandardMaterial({
       map: floorWood.map,
       roughnessMap: floorWood.roughnessMap,
+      // A much weaker normal map than the desk's: viewed from a distance at the shallow, raking
+      // angle the floor is always seen at, the same per-pixel bump that reads as nice grain up
+      // close instead throws hard dark creases along every plank seam — that's the "black spots"
+      // on the floor. A near-flat normal keeps a hint of relief without the exaggerated shading.
       normalMap: floorWood.normalMap,
-      normalScale: new THREE.Vector2(0.5, 0.5),
+      normalScale: new THREE.Vector2(0.08, 0.08),
       roughness: 0.55,
       envMapIntensity: 0.18,
     });
@@ -637,78 +641,101 @@ function ClassroomScene() {
       <PottedPlant position={[-6.35, 0, -0.35]} scale={0.95} />
       <PottedPlant position={[6.1, 0, -6.2]} scale={1.3} />
 
-      {/* Wall décor: a clock and two botanical posters, echoing the reference photo's wall-dressing */}
-      <WallClock position={[-1.6, 4.6, -5.95]} />
-      <Poster position={[-4.4, 3.1, -5.95]} label={"PLANTES\nAROMÀTIQUES"} />
-      <Poster position={[4.3, 3.1, -5.95]} label={"NATURA · CIÈNCIA\nFUTUR"} />
+      {/* Wall decor: a clock, two botanical posters, and a cork board — the board doesn't need to
+       * fill the whole wall, so there's real room on either side of it for other things. */}
+      <WallClock position={[0, 6.3, -5.95]} />
+      <Poster position={[-4.8, 3.1, -5.95]} label={"PLANTES\nAROMÀTIQUES"} />
+      <Poster position={[4.7, 3.1, -5.95]} label={"NATURA · CIÈNCIA\nFUTUR"} />
 
-      {/* Blackboard, real chalk-slate texture instead of a flat fill */}
+      {/* Cork board with pinned notes — the wall isn't just the board and two posters */}
+      <group position={[6.15, 3.0, -5.8]}>
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[1.3, 1.6, 0.06]} />
+          <meshStandardMaterial color="#c9ab7a" roughness={0.95} />
+        </mesh>
+        <mesh position={[0, 0, -0.035]}>
+          <boxGeometry args={[1.44, 1.74, 0.03]} />
+          <meshStandardMaterial color="#4a3a26" roughness={0.6} />
+        </mesh>
+        {[
+          { x: -0.35, y: 0.45, c: "#e8c96a", r: 0.05 },
+          { x: 0.3, y: 0.5, c: "#e8ece0", r: -0.1 },
+          { x: -0.25, y: -0.15, c: "#c98a7a", r: 0.12 },
+          { x: 0.35, y: -0.35, c: "#8fb0a0", r: -0.06 },
+        ].map((n, i) => (
+          <group key={i} position={[n.x, n.y, 0.035]} rotation={[0, 0, n.r]}>
+            <mesh>
+              <planeGeometry args={[0.34, 0.26]} />
+              <meshStandardMaterial color={n.c} roughness={0.8} />
+            </mesh>
+            <mesh position={[0, 0.1, 0.002]}>
+              <circleGeometry args={[0.012, 10]} />
+              <meshStandardMaterial color="#c0392b" roughness={0.4} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+
+      {/* Blackboard — sized to leave real wall around it instead of filling the whole back wall */}
       <mesh position={[0, 3.2, -6]} material={materials.slateMat} receiveShadow>
-        <planeGeometry args={[10, 5]} />
+        <planeGeometry args={[7, 3.6]} />
       </mesh>
-      <mesh position={[0, 3.2, -5.94]}>
-        <planeGeometry args={[7, 0.06]} />
+      <mesh position={[0, 4.15, -5.94]}>
+        <planeGeometry args={[5.5, 0.05]} />
         <meshStandardMaterial color={PALETTE.accent} emissive={PALETTE.accent} emissiveIntensity={1.2} />
       </mesh>
 
       {/* Wooden frame + chalk tray — an unframed slate plane floating on the wall is what read as
        * "flat fill", not the slate texture itself; the frame and tray are what make it a mounted
        * board someone actually uses. */}
-      <mesh position={[0, 5.74, -5.95]} material={materials.woodMat} castShadow>
-        <boxGeometry args={[10.3, 0.1, 0.08]} />
+      <mesh position={[0, 5.05, -5.95]} material={materials.woodMat} castShadow>
+        <boxGeometry args={[7.3, 0.1, 0.08]} />
       </mesh>
-      <mesh position={[0, 0.66, -5.95]} material={materials.woodMat} castShadow>
-        <boxGeometry args={[10.3, 0.1, 0.08]} />
+      <mesh position={[0, 1.35, -5.95]} material={materials.woodMat} castShadow>
+        <boxGeometry args={[7.3, 0.1, 0.08]} />
       </mesh>
-      <mesh position={[-5.05, 3.2, -5.95]} material={materials.woodMat} castShadow>
-        <boxGeometry args={[0.1, 5.1, 0.08]} />
+      <mesh position={[-3.55, 3.2, -5.95]} material={materials.woodMat} castShadow>
+        <boxGeometry args={[0.1, 3.7, 0.08]} />
       </mesh>
-      <mesh position={[5.05, 3.2, -5.95]} material={materials.woodMat} castShadow>
-        <boxGeometry args={[0.1, 5.1, 0.08]} />
+      <mesh position={[3.55, 3.2, -5.95]} material={materials.woodMat} castShadow>
+        <boxGeometry args={[0.1, 3.7, 0.08]} />
       </mesh>
-      <mesh position={[0, 0.58, -5.75]} material={materials.woodMat} castShadow receiveShadow>
-        <boxGeometry args={[9, 0.06, 0.22]} />
+      <mesh position={[0, 1.27, -5.75]} material={materials.woodMat} castShadow receiveShadow>
+        <boxGeometry args={[6.3, 0.06, 0.22]} />
       </mesh>
-      <mesh position={[2.2, 0.63, -5.75]} rotation={[0, 0, Math.PI / 2]} castShadow>
+      <mesh position={[1.6, 1.32, -5.75]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.014, 0.014, 0.18, 8]} />
         <meshStandardMaterial color="#f4f1e8" roughness={0.6} />
       </mesh>
-      <mesh position={[2.45, 0.63, -5.72]} rotation={[0, 0.3, Math.PI / 2]} castShadow>
+      <mesh position={[1.85, 1.32, -5.72]} rotation={[0, 0.3, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.014, 0.014, 0.16, 8]} />
         <meshStandardMaterial color="#f4f1e8" roughness={0.6} />
       </mesh>
-      <mesh position={[-2.3, 0.63, -5.72]} castShadow>
+      <mesh position={[-1.7, 1.32, -5.72]} castShadow>
         <boxGeometry args={[0.16, 0.06, 0.09]} />
         <meshStandardMaterial color="#2a2a26" roughness={0.85} />
       </mesh>
       {/* A real lesson written on the board, not a floating logo — title, the molecule of the
        * day, the actual yield formula the TDR uses, and the terpene family it belongs to. */}
-      <Text position={[-4.6, 5.15, -5.93]} fontSize={0.46} color="#f4f1e4" anchorX="left" anchorY="middle" letterSpacing={0.02}>
+      <Text position={[-3.2, 4.65, -5.93]} fontSize={0.4} color="#f4f1e4" anchorX="left" anchorY="middle" letterSpacing={0.02}>
         {"ТЕРПЕНЫ"}
       </Text>
-      <Text position={[-4.6, 4.55, -5.93]} fontSize={0.19} color="#b9c7b6" anchorX="left" anchorY="middle">
-        {"строительные блоки аромата"}
-      </Text>
 
-      <mesh position={[-3.6, 2.55, -5.93]} rotation={[0, 0, 0.2]}>
-        <ringGeometry args={[0.42, 0.46, 6]} />
+      <mesh position={[-2.6, 3.35, -5.93]} rotation={[0, 0, 0.2]}>
+        <ringGeometry args={[0.32, 0.35, 6]} />
         <meshBasicMaterial color="#eef1e8" transparent opacity={0.55} side={THREE.DoubleSide} />
       </mesh>
-      <Text position={[-2.55, 2.6, -5.93]} fontSize={0.32} color="#eef1e8" anchorX="left" anchorY="middle">
+      <Text position={[-1.85, 3.4, -5.93]} fontSize={0.28} color="#eef1e8" anchorX="left" anchorY="middle">
         {"β-Pineno"}
       </Text>
-      <Text position={[-2.55, 2.1, -5.93]} fontSize={0.24} color="#c9d0bf" anchorX="left" anchorY="middle">
+      <Text position={[-1.85, 2.98, -5.93]} fontSize={0.2} color="#c9d0bf" anchorX="left" anchorY="middle">
         {"C10H16"}
       </Text>
 
-      <Text position={[0.2, 2.75, -5.93]} fontSize={0.2} color="#eef1e8" anchorX="left" anchorY="middle">
-        {"Rendiment (%) ="}
+      <Text position={[-3.2, 2.35, -5.93]} fontSize={0.16} color="#eef1e8" anchorX="left" anchorY="middle" maxWidth={6.6}>
+        {"Rendiment (%) = m(масла) / m(лепестков) × 100"}
       </Text>
-      <Text position={[0.2, 2.4, -5.93]} fontSize={0.2} color="#eef1e8" anchorX="left" anchorY="middle">
-        {"m(масла) / m(лепестков) × 100"}
-      </Text>
-
-      <Text position={[-4.6, 1.15, -5.93]} fontSize={0.21} color="#b9c7b6" anchorX="left" anchorY="middle" maxWidth={9}>
+      <Text position={[-3.2, 1.78, -5.93]} fontSize={0.17} color="#b9c7b6" anchorX="left" anchorY="middle" maxWidth={6.6}>
         {"Лимонен · Мирцен · Линалоол · Гераниол"}
       </Text>
 
