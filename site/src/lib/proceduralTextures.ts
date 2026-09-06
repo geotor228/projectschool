@@ -353,6 +353,84 @@ export function createPlasterTexture({ base, dark, light, size = 512, repeat = [
   return { map, roughnessMap, normalMap };
 }
 
+type TileFloorOptions = {
+  size?: number;
+  tiles?: number;
+  base?: string;
+  grout?: string;
+  repeat?: [number, number];
+  seed?: number;
+};
+
+/** White ceramic lab tile: square tiles with thin grey grout joints, a faint tone drift tile to
+ * tile, and a smooth glazed finish. Grout is a light grey hairline, never a black line — a dark
+ * heavy joint tiles into the same wireframe grid that ruined the classroom floor. */
+export function createTileFloorTexture({
+  size = 1024,
+  tiles = 4,
+  base = "#f2f3f1",
+  grout = "#c8cac6",
+  repeat = [1, 1],
+  seed = 5,
+}: TileFloorOptions = {}) {
+  const { canvas, ctx } = makeCanvas(size);
+  const cell = size / tiles;
+  const joint = Math.max(1.5, cell * 0.014);
+
+  ctx.fillStyle = grout;
+  ctx.fillRect(0, 0, size, size);
+
+  const baseRgb = [1, 3, 5].map((i) => parseInt(base.slice(i, i + 2), 16));
+  for (let ty = 0; ty < tiles; ty++) {
+    for (let tx = 0; tx < tiles; tx++) {
+      // Fired ceramic is never perfectly uniform; a couple of levels of drift per tile is what
+      // stops a tiled floor reading as one flat plane with lines drawn on it.
+      const drift = Math.round((hash(tx, ty, seed) - 0.5) * 9);
+      ctx.fillStyle = `rgb(${baseRgb[0] + drift},${baseRgb[1] + drift},${baseRgb[2] + drift})`;
+      ctx.fillRect(tx * cell + joint, ty * cell + joint, cell - joint * 2, cell - joint * 2);
+
+      // A soft sheen gradient across each tile, so the glaze catches light unevenly.
+      const g = ctx.createLinearGradient(tx * cell, ty * cell, (tx + 1) * cell, (ty + 1) * cell);
+      g.addColorStop(0, "rgba(255,255,255,0.05)");
+      g.addColorStop(1, "rgba(0,0,0,0.02)");
+      ctx.fillStyle = g;
+      ctx.fillRect(tx * cell + joint, ty * cell + joint, cell - joint * 2, cell - joint * 2);
+    }
+  }
+
+  speckle(ctx, size, seed + 12, 0.0012, "#ffffff", [0.02, 0.05]);
+  speckle(ctx, size, seed + 13, 0.0008, "#b9bbb7", [0.02, 0.05]);
+
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(repeat[0], repeat[1]);
+  map.anisotropy = 8;
+
+  // Glazed tile face is smooth (dark in a roughness map), grout is matte and porous (light).
+  const rough = makeCanvas(size);
+  rough.ctx.fillStyle = "#b4b4b4";
+  rough.ctx.fillRect(0, 0, size, size);
+  for (let ty = 0; ty < tiles; ty++) {
+    for (let tx = 0; tx < tiles; tx++) {
+      const v = 58 + Math.round(hash(tx, ty, seed + 3) * 18);
+      rough.ctx.fillStyle = `rgb(${v},${v},${v})`;
+      rough.ctx.fillRect(tx * cell + joint, ty * cell + joint, cell - joint * 2, cell - joint * 2);
+    }
+  }
+  const roughnessMap = new THREE.CanvasTexture(rough.canvas);
+  roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping;
+  roughnessMap.repeat.set(repeat[0], repeat[1]);
+  roughnessMap.anisotropy = 8;
+
+  const normalMap = new THREE.CanvasTexture(heightToNormalMap(rough.canvas, 0.5));
+  normalMap.wrapS = normalMap.wrapT = THREE.RepeatWrapping;
+  normalMap.repeat.set(repeat[0], repeat[1]);
+  normalMap.anisotropy = 8;
+
+  return { map, roughnessMap, normalMap };
+}
+
 /** Suspended acoustic ceiling tiles: a grid of panels with dark seam lines and a fine speckled
  * texture within each tile, so the ceiling reads as a real office/lab drop-ceiling instead of a
  * flat color fill. */
@@ -465,6 +543,300 @@ export function createPastelGradientTexture(size = 512) {
   const map = new THREE.CanvasTexture(canvas);
   map.colorSpace = THREE.SRGBColorSpace;
   return map;
+}
+
+/** The periodic table, laid out as the real thing: 18 groups across, 7 periods down, with the
+ * f-block dropped out underneath. Symbols are drawn large enough to still be legible from across
+ * the room, which is the whole point of the poster on a lab wall. */
+const PERIODS: (string | null)[][] = [
+  ["H", ...Array(16).fill(null), "He"],
+  ["Li", "Be", ...Array(10).fill(null), "B", "C", "N", "O", "F", "Ne"],
+  ["Na", "Mg", ...Array(10).fill(null), "Al", "Si", "P", "S", "Cl", "Ar"],
+  ["K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr"],
+  ["Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe"],
+  ["Cs", "Ba", "La", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn"],
+  ["Fr", "Ra", "Ac", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"],
+];
+const LANTHANIDES = ["Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu"];
+const ACTINIDES = ["Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"];
+const NONMETALS = new Set(["H", "C", "N", "O", "P", "S", "Se"]);
+const METALLOIDS = new Set(["B", "Si", "Ge", "As", "Sb", "Te", "At"]);
+
+function elementFill(symbol: string, group: number, period: number, fBlock: "lan" | "act" | null): string {
+  if (fBlock === "lan") return "#f6ddc0";
+  if (fBlock === "act") return "#f2ccc4";
+  if (group === 18) return "#dcd4ef";
+  if (group === 17) return "#cfe3f5";
+  if (NONMETALS.has(symbol)) return "#cfe8dd";
+  if (METALLOIDS.has(symbol)) return "#dfe8c8";
+  if (group === 1 && period > 1) return "#f4cfcf";
+  if (group === 2) return "#f7e2c4";
+  if (group >= 3 && group <= 12) return "#e2e6ea";
+  return "#e8e2d6";
+}
+
+export function createPeriodicTableTexture(width = 1600) {
+  const cols = 18;
+  const margin = Math.round(width * 0.028);
+  const cell = Math.floor((width - margin * 2) / cols);
+  const titleH = Math.round(cell * 1.5);
+  const gap = Math.round(cell * 0.35);
+  const height = margin * 2 + titleH + cell * 9 + gap;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.fillStyle = "#fbfaf7";
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.fillStyle = "#1d2530";
+  ctx.font = `600 ${Math.round(cell * 0.62)}px "Helvetica Neue", Arial, sans-serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText("PERIODIC TABLE OF THE ELEMENTS", margin, margin + titleH * 0.42);
+  ctx.fillStyle = "#6d7784";
+  ctx.font = `400 ${Math.round(cell * 0.3)}px "Helvetica Neue", Arial, sans-serif`;
+  ctx.fillText("TAULA PERIÒDICA DELS ELEMENTS", margin, margin + titleH * 0.8);
+
+  let atomic = 0;
+  const drawCell = (
+    symbol: string,
+    number: number,
+    col: number,
+    row: number,
+    fBlock: "lan" | "act" | null,
+  ) => {
+    const x = margin + col * cell;
+    const y = margin + titleH + row * cell + (fBlock ? gap : 0);
+    const pad = Math.max(1, cell * 0.045);
+    ctx.fillStyle = elementFill(symbol, col + 1, row + 1, fBlock);
+    ctx.fillRect(x + pad, y + pad, cell - pad * 2, cell - pad * 2);
+    ctx.strokeStyle = "rgba(40,52,66,0.28)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + pad, y + pad, cell - pad * 2, cell - pad * 2);
+
+    ctx.fillStyle = "#5b6674";
+    ctx.font = `400 ${Math.round(cell * 0.22)}px "Helvetica Neue", Arial, sans-serif`;
+    ctx.textAlign = "left";
+    ctx.fillText(String(number), x + pad * 2.2, y + cell * 0.24);
+
+    ctx.fillStyle = "#141b24";
+    ctx.font = `600 ${Math.round(cell * 0.42)}px "Helvetica Neue", Arial, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(symbol, x + cell / 2, y + cell * 0.62);
+  };
+
+  for (let p = 0; p < PERIODS.length; p++) {
+    for (let g = 0; g < cols; g++) {
+      const symbol = PERIODS[p][g];
+      if (!symbol) continue;
+      atomic += 1;
+      drawCell(symbol, atomicNumberFor(symbol, atomic), g, p, null);
+    }
+  }
+
+  LANTHANIDES.forEach((s, i) => drawCell(s, 58 + i, i + 3, 7, "lan"));
+  ACTINIDES.forEach((s, i) => drawCell(s, 90 + i, i + 3, 8, "act"));
+
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = 8;
+  return { map, aspect: width / height };
+}
+
+/** Atomic numbers run straight down the printed layout except across the two f-block breaks, where
+ * the main table skips the 14 lanthanides and 14 actinides that are printed underneath. */
+function atomicNumberFor(symbol: string, sequential: number): number {
+  // Fr, Ra and Ac open period 7 but still sit after the 14 lanthanides in the printed layout, so
+  // they carry the same offset as the rest of period 6's d-block.
+  const AFTER_LANTHANIDES = new Set([
+    "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn",
+    "Fr", "Ra", "Ac",
+  ]);
+  const AFTER_ACTINIDES = new Set(["Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"]);
+  if (AFTER_ACTINIDES.has(symbol)) return sequential + 28;
+  if (AFTER_LANTHANIDES.has(symbol)) return sequential + 14;
+  return sequential;
+}
+
+type DiagramKind = "clevenger" | "distillation" | "molecules";
+
+/** Technical wall charts for the lab: schematic line art on paper, the kind actually pinned up in
+ * a teaching lab. Drawn rather than lettered-at-you — legible as a diagram at a distance, with the
+ * detail only resolving as the camera gets closer. */
+export function createLabDiagramTexture(kind: DiagramKind, width = 640) {
+  const height = Math.round(width * 1.32);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d")!;
+  const ink = "#22303c";
+  const accent = "#b6763a";
+
+  ctx.fillStyle = "#fcfbf7";
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = "rgba(34,48,60,0.18)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(10, 10, width - 20, height - 20);
+
+  ctx.fillStyle = ink;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.font = `600 ${Math.round(width * 0.062)}px "Helvetica Neue", Arial, sans-serif`;
+
+  const cx = width / 2;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 2.4;
+
+  if (kind === "clevenger") {
+    ctx.fillText("APARELL DE", 34, height * 0.075);
+    ctx.fillText("CLEVENGER", 34, height * 0.128);
+
+    // Round-bottom flask on a mantle.
+    ctx.beginPath();
+    ctx.arc(cx, height * 0.74, width * 0.14, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - width * 0.045, height * 0.652);
+    ctx.lineTo(cx - width * 0.045, height * 0.6);
+    ctx.moveTo(cx + width * 0.045, height * 0.652);
+    ctx.lineTo(cx + width * 0.045, height * 0.6);
+    ctx.stroke();
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.arc(cx, height * 0.762, width * 0.115, 0.15, Math.PI - 0.15);
+    ctx.fill();
+    ctx.fillStyle = ink;
+    ctx.strokeRect(cx - width * 0.17, height * 0.855, width * 0.34, height * 0.045);
+
+    // Column up to the condenser, with the classic coil.
+    ctx.beginPath();
+    ctx.moveTo(cx - width * 0.045, height * 0.6);
+    ctx.lineTo(cx - width * 0.045, height * 0.42);
+    ctx.moveTo(cx + width * 0.045, height * 0.6);
+    ctx.lineTo(cx + width * 0.045, height * 0.42);
+    ctx.stroke();
+    ctx.strokeRect(cx - width * 0.08, height * 0.235, width * 0.16, height * 0.185);
+    ctx.beginPath();
+    for (let i = 0; i <= 26; i++) {
+      const t = i / 26;
+      const y = height * (0.25 + t * 0.155);
+      const x = cx + Math.sin(t * Math.PI * 6) * width * 0.05;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Graduated trap branching off to the side.
+    ctx.beginPath();
+    ctx.moveTo(cx + width * 0.08, height * 0.33);
+    ctx.lineTo(cx + width * 0.24, height * 0.33);
+    ctx.lineTo(cx + width * 0.24, height * 0.52);
+    ctx.stroke();
+    ctx.strokeRect(cx + width * 0.2, height * 0.52, width * 0.085, height * 0.12);
+    ctx.fillStyle = accent;
+    ctx.fillRect(cx + width * 0.202, height * 0.598, width * 0.081, height * 0.04);
+    ctx.fillStyle = ink;
+    ctx.font = `400 ${Math.round(width * 0.036)}px "Helvetica Neue", Arial, sans-serif`;
+    ctx.fillText("oli essencial", cx + width * 0.13, height * 0.68);
+    ctx.fillText("refrigerant", 30, height * 0.3);
+    ctx.fillText("matèria vegetal + H₂O", 30, height * 0.93);
+  } else if (kind === "distillation") {
+    ctx.fillText("HIDRODESTIL·LACIÓ", 34, height * 0.075);
+    ctx.font = `400 ${Math.round(width * 0.036)}px "Helvetica Neue", Arial, sans-serif`;
+    ctx.fillStyle = "#6d7784";
+    ctx.fillText("procés, pas a pas", 34, height * 0.125);
+
+    const steps = ["PÈTALS", "AIGUA + CALOR", "VAPOR", "CONDENSACIÓ", "SEPARACIÓ", "OLI ESSENCIAL"];
+    steps.forEach((label, i) => {
+      const y = height * (0.2 + i * 0.128);
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(width * 0.14, y, width * 0.72, height * 0.076);
+      if (i === steps.length - 1) {
+        ctx.fillStyle = "rgba(182,118,58,0.16)";
+        ctx.fillRect(width * 0.14, y, width * 0.72, height * 0.076);
+      }
+      ctx.fillStyle = ink;
+      ctx.font = `500 ${Math.round(width * 0.045)}px "Helvetica Neue", Arial, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText(label, cx, y + height * 0.038);
+      ctx.textAlign = "left";
+      if (i < steps.length - 1) {
+        const ay = y + height * 0.076;
+        ctx.beginPath();
+        ctx.moveTo(cx, ay);
+        ctx.lineTo(cx, ay + height * 0.036);
+        ctx.moveTo(cx - width * 0.022, ay + height * 0.024);
+        ctx.lineTo(cx, ay + height * 0.036);
+        ctx.lineTo(cx + width * 0.022, ay + height * 0.024);
+        ctx.stroke();
+      }
+    });
+  } else {
+    ctx.fillText("TERPENS", 34, height * 0.075);
+    ctx.font = `400 ${Math.round(width * 0.036)}px "Helvetica Neue", Arial, sans-serif`;
+    ctx.fillStyle = "#6d7784";
+    ctx.fillText("estructures moleculars", 34, height * 0.125);
+
+    const ring = (rx: number, ry: number, r: number, tail: boolean) => {
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      for (let i = 0; i <= 6; i++) {
+        const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+        const px = rx + Math.cos(a) * r;
+        const py = ry + Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      // Inner double-bond strokes, the visual signature of an unsaturated ring.
+      ctx.beginPath();
+      for (const k of [0, 2]) {
+        const a1 = (k / 6) * Math.PI * 2 - Math.PI / 2;
+        const a2 = ((k + 1) / 6) * Math.PI * 2 - Math.PI / 2;
+        ctx.moveTo(rx + Math.cos(a1) * r * 0.76, ry + Math.sin(a1) * r * 0.76);
+        ctx.lineTo(rx + Math.cos(a2) * r * 0.76, ry + Math.sin(a2) * r * 0.76);
+      }
+      ctx.stroke();
+      if (tail) {
+        ctx.beginPath();
+        ctx.moveTo(rx + r, ry);
+        ctx.lineTo(rx + r * 1.7, ry - r * 0.4);
+        ctx.lineTo(rx + r * 2.3, ry + r * 0.1);
+        ctx.stroke();
+      }
+    };
+
+    ring(cx - width * 0.12, height * 0.3, width * 0.11, true);
+    ctx.fillStyle = ink;
+    ctx.font = `500 ${Math.round(width * 0.042)}px "Helvetica Neue", Arial, sans-serif`;
+    ctx.fillText("Limonè · C10H16", 34, height * 0.45);
+
+    ring(cx - width * 0.12, height * 0.6, width * 0.11, false);
+    ctx.fillText("β-Pinè · C10H16", 34, height * 0.75);
+
+    // A short open chain for the alcohol.
+    ctx.strokeStyle = ink;
+    ctx.beginPath();
+    let x = width * 0.2;
+    for (let i = 0; i < 6; i++) {
+      const y = height * (i % 2 === 0 ? 0.85 : 0.885);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+      x += width * 0.1;
+    }
+    ctx.stroke();
+    ctx.fillText("Linalool · C10H18O", 34, height * 0.94);
+  }
+
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = 8;
+  return { map, aspect: width / height };
 }
 
 /** Chalkboard slate: near-black green base, soft chalk-dust smudges, faint scratch lines. */

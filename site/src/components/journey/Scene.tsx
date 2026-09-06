@@ -10,6 +10,9 @@ import { journeyState } from "@/lib/journeyState";
 import {
   createWoodTexture,
   createParquetTexture,
+  createTileFloorTexture,
+  createPeriodicTableTexture,
+  createLabDiagramTexture,
   createSlateTexture,
   createPlasterTexture,
   createAcousticTileTexture,
@@ -1266,6 +1269,215 @@ function BarStool({ position }: { position: THREE.Vector3Tuple }) {
   );
 }
 
+/** A wall-mounted poster printed from a canvas texture — periodic table, process chart, structure
+ * sheet. Height follows the artwork's own aspect so nothing is stretched, and it sits in a thin
+ * aluminium frame the way a real chart on a lab wall does. */
+function ChartPoster({
+  position,
+  rotationY = 0,
+  texture,
+  aspect,
+  width = 2,
+}: {
+  position: THREE.Vector3Tuple;
+  rotationY?: number;
+  texture: THREE.Texture;
+  aspect: number;
+  width?: number;
+}) {
+  const height = width / aspect;
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh castShadow receiveShadow>
+        <planeGeometry args={[width, height]} />
+        <meshStandardMaterial map={texture} roughness={0.85} envMapIntensity={0.08} />
+      </mesh>
+      <mesh position={[0, 0, -0.012]}>
+        <boxGeometry args={[width + 0.06, height + 0.06, 0.02]} />
+        <meshStandardMaterial color="#aeb3b7" metalness={0.5} roughness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Fume hood: the single most recognisable object in a chemistry lab. Glazed sash raised about
+ * halfway on a white cabinet body, interior lit, with a stainless spoil tray and a duct running up
+ * into the ceiling. */
+function FumeHood({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; rotationY?: number }) {
+  const body = useMemo(() => new THREE.MeshStandardMaterial({ color: "#eceef0", roughness: 0.5, envMapIntensity: 0.3 }), []);
+  const steel = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#b7bcc0", metalness: 0.7, roughness: 0.3, envMapIntensity: 0.6 }),
+    [],
+  );
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      {/* Lower cabinet */}
+      <mesh position={[0, 0.42, 0]} material={body} castShadow receiveShadow>
+        <boxGeometry args={[2.4, 0.84, 0.9]} />
+      </mesh>
+      <mesh position={[0, 0.86, 0]} material={steel} castShadow>
+        <boxGeometry args={[2.44, 0.06, 0.94]} />
+      </mesh>
+      {/* Hood shell */}
+      <mesh position={[0, 1.72, -0.1]} material={body} castShadow receiveShadow>
+        <boxGeometry args={[2.4, 1.66, 0.7]} />
+      </mesh>
+      {/* Recessed working chamber, lit from inside */}
+      <mesh position={[0, 1.55, 0.28]}>
+        <boxGeometry args={[2.16, 1.2, 0.12]} />
+        <meshStandardMaterial color="#e4e8ea" roughness={0.6} />
+      </mesh>
+      <pointLight position={[0, 1.95, 0.2]} intensity={2.4} distance={2.6} decay={2} color="#eaf2f6" />
+      {/* Sash glass, raised halfway, with its handle rail */}
+      <mesh position={[0, 1.98, 0.36]}>
+        <planeGeometry args={[2.16, 0.78]} />
+        <meshPhysicalMaterial color="#dfeaef" transmission={0.82} roughness={0.06} thickness={0.05} ior={1.5} />
+      </mesh>
+      <mesh position={[0, 1.57, 0.37]} material={steel} castShadow>
+        <boxGeometry args={[2.2, 0.05, 0.05]} />
+      </mesh>
+      {/* Duct up to the ceiling */}
+      <mesh position={[0, 3.1, -0.1]} material={steel}>
+        <cylinderGeometry args={[0.19, 0.19, 1.1, 16]} />
+      </mesh>
+      {/* Control panel */}
+      <mesh position={[0.94, 1.05, 0.36]}>
+        <planeGeometry args={[0.34, 0.18]} />
+        <meshStandardMaterial color="#2c3238" roughness={0.4} />
+      </mesh>
+      <mesh position={[0.86, 1.05, 0.371]}>
+        <circleGeometry args={[0.022, 12]} />
+        <meshStandardMaterial color="#6fdca0" emissive="#6fdca0" emissiveIntensity={1.4} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Sink run: a stainless basin let into a white worktop, with a tall swan-neck lab tap and an
+ * eyewash station beside it. */
+function LabSink({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; rotationY?: number }) {
+  const steel = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#c0c5c9", metalness: 0.78, roughness: 0.24, envMapIntensity: 0.7 }),
+    [],
+  );
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh position={[0, 0.42, 0]} castShadow receiveShadow>
+        <boxGeometry args={[1.7, 0.84, 0.72]} />
+        <meshStandardMaterial color="#e7eaec" roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 0.87, 0]} castShadow receiveShadow>
+        <boxGeometry args={[1.76, 0.06, 0.78]} />
+        <meshStandardMaterial color="#dfe3e5" roughness={0.35} envMapIntensity={0.4} />
+      </mesh>
+      {/* Basin recess */}
+      <mesh position={[0, 0.84, 0.02]} material={steel}>
+        <boxGeometry args={[0.62, 0.06, 0.46]} />
+      </mesh>
+      <mesh position={[0, 0.78, 0.02]}>
+        <boxGeometry args={[0.56, 0.14, 0.4]} />
+        <meshStandardMaterial color="#9aa1a6" metalness={0.7} roughness={0.35} />
+      </mesh>
+      {/* Swan-neck tap */}
+      <mesh position={[0, 1.02, -0.22]} material={steel}>
+        <cylinderGeometry args={[0.022, 0.022, 0.34, 12]} />
+      </mesh>
+      <mesh position={[0, 1.19, -0.12]} rotation={[Math.PI / 2, 0, 0]} material={steel}>
+        <torusGeometry args={[0.1, 0.022, 8, 16, Math.PI]} />
+      </mesh>
+      {/* Eyewash */}
+      <mesh position={[0.62, 1.0, -0.18]} material={steel}>
+        <cylinderGeometry args={[0.018, 0.018, 0.3, 10]} />
+      </mesh>
+      <mesh position={[0.62, 1.16, -0.1]} rotation={[0.5, 0, 0]}>
+        <coneGeometry args={[0.05, 0.08, 12]} />
+        <meshStandardMaterial color="#3f9d63" roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Open glassware rack: a light steel frame of shelves holding beakers, flasks and measuring
+ * cylinders — the background clutter that makes a lab read as a working room. */
+function GlasswareRack({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; rotationY?: number }) {
+  const frame = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: "#b0b5b9", metalness: 0.55, roughness: 0.4, envMapIntensity: 0.5 }),
+    [],
+  );
+  const glass = useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        color: "#e6eef0",
+        transmission: 0.88,
+        roughness: 0.08,
+        thickness: 0.1,
+        ior: 1.5,
+      }),
+    [],
+  );
+  const shelves = [0.5, 1.05, 1.6, 2.15];
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      {shelves.map((y, i) => (
+        <mesh key={i} position={[0, y, 0]} material={frame} castShadow receiveShadow>
+          <boxGeometry args={[2, 0.04, 0.44]} />
+        </mesh>
+      ))}
+      {[-0.96, 0.96].map((x, i) => (
+        <mesh key={i} position={[x, 1.32, 0]} material={frame}>
+          <boxGeometry args={[0.05, 1.75, 0.05]} />
+        </mesh>
+      ))}
+      {shelves.slice(0, 3).map((y, s) =>
+        Array.from({ length: 5 }, (_, i) => {
+          const x = -0.75 + i * 0.375;
+          const kind = (s + i) % 3;
+          const h = kind === 0 ? 0.22 : kind === 1 ? 0.3 : 0.16;
+          const r = kind === 2 ? 0.06 : 0.075;
+          return (
+            <mesh key={`${s}-${i}`} position={[x, y + 0.02 + h / 2, 0]} material={glass} castShadow>
+              <cylinderGeometry args={[r, r * (kind === 1 ? 0.8 : 1), h, 16, 1, true]} />
+            </mesh>
+          );
+        }),
+      )}
+    </group>
+  );
+}
+
+/** Wall-mounted fire extinguisher on its bracket — mandatory in any real lab, and one of those
+ * mundane objects whose absence quietly reads as "this room is a set". */
+function FireExtinguisher({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; rotationY?: number }) {
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh castShadow>
+        <cylinderGeometry args={[0.1, 0.1, 0.52, 18]} />
+        <meshStandardMaterial color="#b02b22" roughness={0.42} metalness={0.25} />
+      </mesh>
+      <mesh position={[0, 0.3, 0]}>
+        <cylinderGeometry args={[0.045, 0.075, 0.1, 14]} />
+        <meshStandardMaterial color="#8e2019" roughness={0.45} />
+      </mesh>
+      <mesh position={[0, 0.38, 0]}>
+        <cylinderGeometry args={[0.022, 0.022, 0.08, 10]} />
+        <meshStandardMaterial color="#2f3438" metalness={0.6} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 0.42, 0.03]} rotation={[0.4, 0, 0]}>
+        <boxGeometry args={[0.16, 0.02, 0.05]} />
+        <meshStandardMaterial color="#2f3438" metalness={0.6} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 0.02, -0.11]}>
+        <boxGeometry args={[0.1, 0.3, 0.03]} />
+        <meshStandardMaterial color="#9aa0a4" metalness={0.5} roughness={0.45} />
+      </mesh>
+      <mesh position={[0, -0.06, 0.101]}>
+        <planeGeometry args={[0.1, 0.14]} />
+        <meshStandardMaterial color="#f2f2ee" roughness={0.7} />
+      </mesh>
+    </group>
+  );
+}
+
 /** A two-tier storage wall like the reference photo's back wall: an upper glass-fronted cabinet
  * (a shelf of bottles, a shelf of books/binders, warm under-shelf LEDs) sitting over a lower
  * solid cabinet with its own counter strip — mounted flush against a side wall, parallel to the
@@ -1388,9 +1600,11 @@ function LabDoor({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; ro
 
 function LabScene() {
   const groupRef = useRef<THREE.Group>(null);
-  // Wider than the default: the classroom now dissolves out by the time the camera is 6 units past
-  // it (z -20), so the lab has to be on screen before that or there's a bare stretch between them.
-  useStationVisibility(groupRef, STATIONS.lab, 16);
+  // The lab now has a back wall at z -41, and the camera's path runs straight through it on the way
+  // to the molecule scene — so this dissolves out like the classroom rather than flipping off. It
+  // also has to fade *in* early (16 units out): the classroom is gone by z -20, so the lab has to
+  // be on screen before that or there's a bare stretch between the two.
+  useStationDissolve(groupRef, STATIONS.lab, { inAt: 16, outAt: 6.5, fade: 2.5 });
 
   const flaskRef = useRef<THREE.Mesh>(null);
   useFrame((state) => {
@@ -1399,15 +1613,14 @@ function LabScene() {
     }
   });
 
-  // Dark charcoal room shell + bench, same technique as the classroom (side walls only — never
-  // front/back, the camera flies straight through) but kept moody: near-black, minimal texture,
-  // no daylight. This is the control condition next to the UAHD ultrasonic bath, matching the
-  // TDR's actual two-condition design instead of one flask floating alone.
+  // A real teaching lab, not a moody set: white matte walls, white glazed tile underfoot, light
+  // worktops on steel. The room used to be near-black with dramatic gold and wine accents, which
+  // read as a jewellery advert rather than the room where the experiment actually happens.
   const materials = useMemo(() => {
     const wallPlaster = createPlasterTexture({
-      base: "#171410",
-      dark: "#0c0a08",
-      light: "#241f19",
+      base: "#f2f3f2",
+      dark: "#e2e4e3",
+      light: "#fbfbfa",
       size: 512,
       repeat: [2, 2],
       seed: 41,
@@ -1415,17 +1628,55 @@ function LabScene() {
     const wallMat = new THREE.MeshStandardMaterial({
       map: wallPlaster.map,
       roughnessMap: wallPlaster.roughnessMap,
-      roughness: 0.9,
-      envMapIntensity: 0.1,
+      normalMap: wallPlaster.normalMap,
+      normalScale: new THREE.Vector2(0.18, 0.18),
+      // Matte emulsion: high roughness and almost no environment response, so a white wall stays
+      // white instead of turning into a glare panel under the bench lights.
+      roughness: 0.96,
+      envMapIntensity: 0.05,
     });
-    const floorMat = new THREE.MeshStandardMaterial({ color: "#0f0c09", roughness: 0.4, envMapIntensity: 0.3 });
-    const counterMat = new THREE.MeshStandardMaterial({ color: "#7d8286", metalness: 0.75, roughness: 0.32, envMapIntensity: 0.5 });
-    const cabinetMat = new THREE.MeshStandardMaterial({ color: "#141414", roughness: 0.55 });
-    const ceilingTiles = createAcousticTileTexture(512, 5, "#3a352e");
+    const tile = createTileFloorTexture({ size: 1024, tiles: 4, repeat: [5, 11], seed: 7 });
+    const floorMat = new THREE.MeshStandardMaterial({
+      map: tile.map,
+      roughnessMap: tile.roughnessMap,
+      normalMap: tile.normalMap,
+      normalScale: new THREE.Vector2(0.05, 0.05),
+      // Glazed, so there is a soft sheen and a hint of the room in it, but nowhere near a mirror.
+      roughness: 0.28,
+      metalness: 0.02,
+      envMapIntensity: 0.45,
+    });
+    const counterMat = new THREE.MeshStandardMaterial({
+      color: "#e3e6e8",
+      metalness: 0.1,
+      roughness: 0.34,
+      envMapIntensity: 0.4,
+    });
+    const cabinetMat = new THREE.MeshStandardMaterial({ color: "#e9ebec", roughness: 0.52, envMapIntensity: 0.25 });
+    const frameMat = new THREE.MeshStandardMaterial({
+      color: "#8d9296",
+      metalness: 0.7,
+      roughness: 0.32,
+      envMapIntensity: 0.6,
+    });
+    const ceilingTiles = createAcousticTileTexture(512, 5, "#f4f4f1");
     ceilingTiles.repeat.set(2.5, 6);
+    ceilingTiles.anisotropy = 8;
     const ceilingMat = new THREE.MeshStandardMaterial({ map: ceilingTiles, roughness: 0.95 });
-    return { wallMat, floorMat, counterMat, cabinetMat, ceilingMat };
+    return { wallMat, floorMat, counterMat, cabinetMat, frameMat, ceilingMat };
   }, []);
+
+  // Wall charts, drawn once to canvas: the periodic table plus the three schematics this project
+  // actually needs — the Clevenger rig, the hydrodistillation process, and the terpene structures.
+  const charts = useMemo(
+    () => ({
+      periodic: createPeriodicTableTexture(1600),
+      clevenger: createLabDiagramTexture("clevenger", 640),
+      distillation: createLabDiagramTexture("distillation", 640),
+      molecules: createLabDiagramTexture("molecules", 640),
+    }),
+    [],
+  );
 
   const steam = useMemo(() => {
     const count = 120;
@@ -1455,8 +1706,8 @@ function LabScene() {
 
   return (
     <group ref={groupRef} position={[0, -1, STATIONS.lab]}>
-      {/* Floor + side-wall shell — grounds the apparatus instead of leaving it floating in pure
-       * fog, without giving up the moody dark-lab read (near-black, almost no fill light). */}
+      {/* Floor + wall shell. Tile underfoot, matte white walls, and — new — a real back wall, so
+       * the room ends in something instead of fading into fog behind the apparatus. */}
       <mesh position={[0, -0.82, 0]} rotation={[-Math.PI / 2, 0, 0]} material={materials.floorMat} receiveShadow>
         <planeGeometry args={[11, 26]} />
       </mesh>
@@ -1466,31 +1717,108 @@ function LabScene() {
       <mesh position={[5, 3, 0]} rotation={[0, -Math.PI / 2, 0]} material={materials.wallMat} receiveShadow>
         <planeGeometry args={[26, 8]} />
       </mesh>
+      {/* Set well back at z -10. The room dissolves out by z -40.5 in world terms, and at anything
+       * closer than about 3.5 units a 5-metre chart simply fills the frame — the camera ended up
+       * nose-to-nose with the periodic table while the lab chapter was still being read. */}
+      <mesh position={[0, 1.79, -10]} material={materials.wallMat} receiveShadow>
+        <planeGeometry args={[11, 5.22]} />
+      </mesh>
       <mesh position={[0, 4.4, 0]} rotation={[Math.PI / 2, 0, 0]} material={materials.ceilingMat} receiveShadow>
         <planeGeometry args={[11, 26]} />
+      </mesh>
+      {/* Skirting where the tile meets the wall — a coved edge, as in any wet-work room */}
+      <mesh position={[0, -0.75, -9.96]} material={materials.frameMat}>
+        <boxGeometry args={[11, 0.14, 0.05]} />
       </mesh>
       {/* Ceiling vent grille — a small mundane detail, recessed and darker than the tiles around it */}
       <mesh position={[2, 4.38, -4]} rotation={[Math.PI / 2, 0, 0]}>
         <planeGeometry args={[0.9, 0.5]} />
-        <meshStandardMaterial color="#111311" roughness={0.6} />
+        <meshStandardMaterial color="#b9bdbf" roughness={0.6} metalness={0.3} />
       </mesh>
 
-      {/* Raised stainless bench on a dark cabinet base, replacing the round "perfume podium" —
-       * the reference is a real lab bench at counter height, not a display pedestal. */}
+      {/* Back wall charts: the periodic table as the centrepiece, with the three schematics this
+       * project runs on ranged beside it. */}
+      <ChartPoster
+        position={[-0.6, 2.35, -9.93]}
+        texture={charts.periodic.map}
+        aspect={charts.periodic.aspect}
+        width={5.2}
+      />
+      <ChartPoster
+        position={[3.3, 2.75, -9.93]}
+        texture={charts.clevenger.map}
+        aspect={charts.clevenger.aspect}
+        width={1.5}
+      />
+      <ChartPoster
+        position={[3.3, 1.2, -9.93]}
+        texture={charts.distillation.map}
+        aspect={charts.distillation.aspect}
+        width={1.5}
+      />
+      <ChartPoster
+        position={[-3.85, 1.45, -9.93]}
+        texture={charts.molecules.map}
+        aspect={charts.molecules.aspect}
+        width={1.4}
+      />
+
+      {/* Raised worktop on a cabinet base — light laminate on steel rather than the old dark slab */}
       <mesh position={[0, BENCH_Y - 0.04, 0.7]} material={materials.counterMat} castShadow receiveShadow>
         <boxGeometry args={[7.6, 0.08, 2.4]} />
       </mesh>
       <mesh position={[0, -0.525, 0.7]} material={materials.cabinetMat} receiveShadow>
         <boxGeometry args={[7.4, 0.59, 2.2]} />
       </mesh>
+      {/* Steel frame and toe kick under the worktop, so the bench reads as lab furniture on legs */}
+      <mesh position={[0, -0.79, 0.7]} material={materials.frameMat}>
+        <boxGeometry args={[7.2, 0.06, 2]} />
+      </mesh>
+      {[-3.5, 3.5].map((x, i) => (
+        <mesh key={i} position={[x, -0.5, 0.7]} material={materials.frameMat}>
+          <boxGeometry args={[0.07, 0.64, 2.2]} />
+        </mesh>
+      ))}
+      {/* Cabinet doors + handles */}
+      {[-2.6, -0.9, 0.9, 2.6].map((x, i) => (
+        <group key={i} position={[x, -0.5, 1.81]}>
+          <mesh receiveShadow>
+            <boxGeometry args={[1.5, 0.5, 0.03]} />
+            <meshStandardMaterial color="#f1f3f4" roughness={0.45} />
+          </mesh>
+          <mesh position={[0, 0.16, 0.03]} material={materials.frameMat}>
+            <boxGeometry args={[0.5, 0.025, 0.025]} />
+          </mesh>
+        </group>
+      ))}
+
+      <FumeHood position={[-3.5, -0.82, -8.6]} />
+      <LabSink position={[1.9, -0.82, -9.2]} />
+      <GlasswareRack position={[-4.72, -0.82, 1.6]} rotationY={Math.PI / 2} />
+      <FireExtinguisher position={[4.82, 0.75, 5.1]} rotationY={-Math.PI / 2} />
       <WallCabinet position={[-4.83, 1.6, -2.6]} rotationY={Math.PI / 2} />
       <LabWindow position={[4.85, 1.9, -3.4]} rotationY={-Math.PI / 2} />
       <PottedPlant position={[4.3, -0.82, -5.2]} scale={1.1} />
       <LabDoor position={[4.92, 0.44, 6.6]} rotationY={-Math.PI / 2} />
-      <Poster position={[4.83, 2.1, 1.6]} rotationY={-Math.PI / 2} label={"AROMATIC COMPOUNDS\nTERPENES"} />
+      <ChartPoster
+        position={[4.83, 2.1, 1.6]}
+        rotationY={-Math.PI / 2}
+        texture={charts.molecules.map}
+        aspect={charts.molecules.aspect}
+        width={1.3}
+      />
       <Poster position={[4.83, 2.1, 4]} rotationY={-Math.PI / 2} label={"NATURAL SCIENCE\nBETTER FUTURE"} />
       <PendantLight position={[0, 2.9, 0.7]} width={4} dropFrom={1.4} />
+      <PendantLight position={[0, 2.9, -4.2]} width={4} dropFrom={1.4} />
       <BarStool position={[0, -0.82, 2.6]} />
+
+      {/* Room lighting for a white room: broad, soft and even. Sky-toned bounce from above and a
+       * cool grey bounce off the tile below, then two gentle fills under the pendant fittings —
+       * enough to light the walls without pushing them to pure white. */}
+      <hemisphereLight args={["#f4f8fa", "#b8bcbe", 0.5]} />
+      <pointLight position={[0, 3.2, 0.7]} intensity={5.5} distance={13} decay={1.8} color="#f7fbfd" />
+      <pointLight position={[0, 3.2, -4.2]} intensity={4.5} distance={12} decay={1.8} color="#f7fbfd" />
+      <pointLight position={[0, 1.6, 5.5]} intensity={2.5} distance={10} decay={1.9} color="#eef3f6" />
 
       {/* The whole apparatus cluster sits pushed back from the camera's exact path — a tall
        * vertical condenser sitting right on the flight line at the "hero" moment reads as an
@@ -1585,11 +1913,26 @@ function LabScene() {
       {/* Raw material floating beside the flask — kept on the right, clear of the left-aligned text card */}
       <Flower position={[2.3, flaskY + 0.15, 1.1]} scale={0.75} />
 
-      {/* Dramatic diagonal shaft, echoing the perfume-bottle reference */}
-      <LightBeam position={[2.2, 5, -1]} rotation={[0, 0, 0.5]} length={9} radius={1.6} opacity={0.18} />
-      <pointLight position={[0, 1.5, 2.5]} intensity={20} color={PALETTE.accent} />
-      <pointLight position={[2, 3, 2]} intensity={10} color={PALETTE.secondary} />
-      <pointLight position={[2.6, 2, 1.4]} intensity={10} color={PALETTE.primary} />
+      {/* Accent on the apparatus itself: a soft, near-neutral spot from the ceiling, aimed down at
+       * the bench. The old lighting here was a gold volumetric shaft plus gold and wine point
+       * lights — the perfume-advert look, which against white walls and white tile just stained
+       * the whole room amber. The equipment's own sources (the mantle's orange, the ultrasonic
+       * bath's cyan) are what carry colour now, and they read far better against neutral surfaces. */}
+      <spotLight
+        position={[0.4, 3.6, 1.4]}
+        target-position={[0, 0, 0]}
+        intensity={14}
+        distance={8}
+        angle={0.75}
+        penumbra={0.9}
+        decay={1.8}
+        color="#fdfdfb"
+        castShadow
+        shadow-mapSize={[1024, 1024]}
+        shadow-bias={-0.0005}
+        shadow-radius={4}
+      />
+      <pointLight position={[1.6, 1.2, 1.6]} intensity={3.4} distance={4.5} decay={2} color="#eef4f6" />
       </group>
     </group>
   );
@@ -1989,7 +2332,11 @@ export default function Scene() {
       <MoleculeScene />
       <HorizonScene />
       <EffectComposer multisampling={0}>
-        <Bloom mipmapBlur luminanceThreshold={0.45} luminanceSmoothing={0.3} intensity={0.5} radius={0.75} />
+        {/* Threshold sits high on purpose. At 0.45 it was tuned for the near-black scenes, where
+         * only light sources ever got that bright — but a white-walled lab is above that threshold
+         * almost everywhere, so the entire room bloomed into a milky haze. Only actual emitters
+         * (fixtures, LEDs, the window, the glowing molecule) should ever bleed. */}
+        <Bloom mipmapBlur luminanceThreshold={0.88} luminanceSmoothing={0.25} intensity={0.42} radius={0.7} />
         <Vignette eskil={false} offset={0.3} darkness={0.45} />
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       </EffectComposer>
