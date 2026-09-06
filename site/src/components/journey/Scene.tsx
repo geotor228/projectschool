@@ -260,15 +260,29 @@ function Desk({
           <cylinderGeometry args={[0.03, 0.03, 0.74, 8]} />
         </mesh>
       ))}
-      {/* Chair, offset behind the desk — its own olive plastic-shell material, not the desk's wood */}
-      <RoundedBox args={[0.55, 0.06, 0.5]} radius={0.02} smoothness={2} position={[0, 0.42, 0.62]} material={chairMat} castShadow />
-      <RoundedBox args={[0.55, 0.65, 0.06]} radius={0.03} smoothness={2} position={[0, 0.75, 0.85]} material={chairMat} castShadow />
-      <mesh position={[-0.24, 0.2, 0.6]} material={metalMat}>
-        <cylinderGeometry args={[0.025, 0.025, 0.4, 6]} />
+      {/* Cross-brace between the front legs — real desks aren't four unconnected sticks */}
+      <mesh position={[0, 0.16, -0.32]} rotation={[0, 0, Math.PI / 2]} material={metalMat}>
+        <cylinderGeometry args={[0.018, 0.018, 1.1, 8]} />
       </mesh>
-      <mesh position={[0.24, 0.2, 0.6]} material={metalMat}>
-        <cylinderGeometry args={[0.025, 0.025, 0.4, 6]} />
+
+      {/* Chair, offset behind the desk — its own olive plastic-shell material, not the desk's wood.
+       * A shallow molded dish for the seat and a gently reclined, two-segment back read as a real
+       * stackable classroom chair instead of two flat boards nailed together. */}
+      <mesh position={[0, 0.42, 0.62]} scale={[0.62, 0.16, 0.56]} material={chairMat} castShadow>
+        <sphereGeometry args={[0.5, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
       </mesh>
+      <RoundedBox args={[0.55, 0.42, 0.055]} radius={0.03} smoothness={2} position={[0, 0.62, 0.87]} rotation={[-0.22, 0, 0]} material={chairMat} castShadow />
+      <RoundedBox args={[0.5, 0.28, 0.05]} radius={0.03} smoothness={2} position={[0, 0.93, 0.79]} rotation={[-0.36, 0, 0]} material={chairMat} castShadow />
+      {[
+        [-0.24, 0.2, 0.6],
+        [0.24, 0.2, 0.6],
+        [-0.22, 0.31, 0.86],
+        [0.22, 0.31, 0.86],
+      ].map((p, i) => (
+        <mesh key={i} position={p as THREE.Vector3Tuple} material={metalMat}>
+          <cylinderGeometry args={[0.022, 0.022, i < 2 ? 0.4 : 0.62, 6]} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -520,7 +534,9 @@ function ClassroomScene() {
       roughness: 0.92,
       envMapIntensity: 0.1,
     });
-    const ceilingMat = new THREE.MeshStandardMaterial({ color: "#e9e5d8", roughness: 0.95 });
+    const ceilingTiles = createAcousticTileTexture(512, 4, "#eee9db");
+    ceilingTiles.repeat.set(3.5, 7.5);
+    const ceilingMat = new THREE.MeshStandardMaterial({ map: ceilingTiles, roughness: 0.95 });
     const trimMat = new THREE.MeshStandardMaterial({ color: "#4a3a26", roughness: 0.55 });
     return { woodMat, metalMat, chairMat, floorMat, slateMat, wallMat, ceilingMat, trimMat };
   }, []);
@@ -633,6 +649,37 @@ function ClassroomScene() {
       <mesh position={[0, 3.2, -5.94]}>
         <planeGeometry args={[7, 0.06]} />
         <meshStandardMaterial color={PALETTE.accent} emissive={PALETTE.accent} emissiveIntensity={1.2} />
+      </mesh>
+
+      {/* Wooden frame + chalk tray — an unframed slate plane floating on the wall is what read as
+       * "flat fill", not the slate texture itself; the frame and tray are what make it a mounted
+       * board someone actually uses. */}
+      <mesh position={[0, 5.74, -5.95]} material={materials.woodMat} castShadow>
+        <boxGeometry args={[10.3, 0.1, 0.08]} />
+      </mesh>
+      <mesh position={[0, 0.66, -5.95]} material={materials.woodMat} castShadow>
+        <boxGeometry args={[10.3, 0.1, 0.08]} />
+      </mesh>
+      <mesh position={[-5.05, 3.2, -5.95]} material={materials.woodMat} castShadow>
+        <boxGeometry args={[0.1, 5.1, 0.08]} />
+      </mesh>
+      <mesh position={[5.05, 3.2, -5.95]} material={materials.woodMat} castShadow>
+        <boxGeometry args={[0.1, 5.1, 0.08]} />
+      </mesh>
+      <mesh position={[0, 0.58, -5.75]} material={materials.woodMat} castShadow receiveShadow>
+        <boxGeometry args={[9, 0.06, 0.22]} />
+      </mesh>
+      <mesh position={[2.2, 0.63, -5.75]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.014, 0.014, 0.18, 8]} />
+        <meshStandardMaterial color="#f4f1e8" roughness={0.6} />
+      </mesh>
+      <mesh position={[2.45, 0.63, -5.72]} rotation={[0, 0.3, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.014, 0.014, 0.16, 8]} />
+        <meshStandardMaterial color="#f4f1e8" roughness={0.6} />
+      </mesh>
+      <mesh position={[-2.3, 0.63, -5.72]} castShadow>
+        <boxGeometry args={[0.16, 0.06, 0.09]} />
+        <meshStandardMaterial color="#2a2a26" roughness={0.85} />
       </mesh>
       {/* Chalk molecule sketch + formula — legible chalk text instead of an abstract ring pair */}
       <mesh position={[-2.4, 4, -5.93]} rotation={[0, 0, 0.2]}>
