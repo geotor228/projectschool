@@ -736,6 +736,192 @@ function Flower({ position = [0, 0, 0] as THREE.Vector3Tuple, scale = 1 }) {
   );
 }
 
+/** A long linear pendant fixture hanging over a bench — reused between the classroom and the lab. */
+function PendantLight({ position, width = 5 }: { position: THREE.Vector3Tuple; width?: number }) {
+  return (
+    <mesh position={position}>
+      <boxGeometry args={[width, 0.08, 0.18]} />
+      <meshStandardMaterial color="#f7f4ea" emissive="#fff6df" emissiveIntensity={1.4} roughness={0.4} />
+    </mesh>
+  );
+}
+
+/** A real retort-stand silhouette — heavy round base, thin rod, a boss-head block, and a C-shaped
+ * ring clamp (a partial torus, not a full donut) gripping the flask. The full-torus "ring stand"
+ * this replaces was the single biggest thing reading as a crude floating shape in the reference
+ * comparison — a real clamp has a gap where it opens to receive the flask. */
+function RetortStand({
+  position,
+  rotationY = 0,
+  rodHeight = 1.7,
+  clampHeight = 0.6,
+  clampRadius = 0.5,
+  standReach = clampRadius,
+}: {
+  position: THREE.Vector3Tuple;
+  rotationY?: number;
+  rodHeight?: number;
+  clampHeight?: number;
+  clampRadius?: number;
+  standReach?: number;
+}) {
+  const metal = useMemo(() => new THREE.MeshStandardMaterial({ color: "#181818", metalness: 0.75, roughness: 0.35 }), []);
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh position={[0, 0.025, 0]} castShadow receiveShadow material={metal}>
+        <cylinderGeometry args={[0.32, 0.34, 0.05, 24]} />
+      </mesh>
+      <mesh position={[0, rodHeight / 2, 0]} castShadow material={metal}>
+        <cylinderGeometry args={[0.016, 0.016, rodHeight, 12]} />
+      </mesh>
+      {/* Boss-head clamp block where the ring attaches to the rod */}
+      <mesh position={[0, clampHeight, 0]} castShadow material={metal}>
+        <boxGeometry args={[0.1, 0.09, 0.1]} />
+      </mesh>
+      {/* C-ring: a torus with an arc short of a full circle, leaving a real gap to slide the flask
+       * in — `standReach` is the horizontal distance from the rod to the object it grips, so the
+       * ring (radius `clampRadius`) actually centers on that object instead of floating nearby. */}
+      <mesh position={[0, clampHeight, standReach]} rotation={[Math.PI / 2, 0, Math.PI * 0.62]} castShadow material={metal}>
+        <torusGeometry args={[clampRadius, 0.014, 8, 32, Math.PI * 1.5]} />
+      </mesh>
+    </group>
+  );
+}
+
+/** A Liebig-style vertical condenser: a slim inner vapor tube inside a wider glass water jacket,
+ * with a few graduation rings and two hose-barb stubs — the horizontal plain cylinder this
+ * replaces read as a random glass rod, not a condenser. */
+function LiebigCondenser({ position }: { position: THREE.Vector3Tuple }) {
+  const glass = useMemo(
+    () => new THREE.MeshPhysicalMaterial({ color: "#eef3ee", transmission: 0.92, roughness: 0.04, thickness: 0.15, ior: 1.47 }),
+    [],
+  );
+  const height = 1.15;
+  return (
+    <group position={position}>
+      <mesh castShadow material={glass}>
+        <cylinderGeometry args={[0.065, 0.065, height, 16]} />
+      </mesh>
+      <mesh material={glass}>
+        <cylinderGeometry args={[0.15, 0.15, height * 0.8, 20, 1, true]} />
+      </mesh>
+      {[-0.55, 0, 0.55].map((y, i) => (
+        <mesh key={i} position={[0, y, 0]} rotation={[Math.PI / 2, 0, 0]} material={glass}>
+          <torusGeometry args={[0.15, 0.012, 8, 24]} />
+        </mesh>
+      ))}
+      {/* Hose barbs, water in/out */}
+      <mesh position={[0.16, height * 0.32, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.03, 0.03, 0.14, 10]} />
+        <meshStandardMaterial color="#1c1c1c" roughness={0.6} />
+      </mesh>
+      <mesh position={[0.16, -height * 0.32, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.03, 0.03, 0.14, 10]} />
+        <meshStandardMaterial color="#1c1c1c" roughness={0.6} />
+      </mesh>
+    </group>
+  );
+}
+
+/** A boxy hotplate/stirrer with a ceramic top plate and a small digital-readout glow — reads as
+ * lab equipment instead of the bare glowing ring it replaces. */
+function HotPlate({ position }: { position: THREE.Vector3Tuple }) {
+  return (
+    <group position={position}>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[0.62, 0.14, 0.5]} />
+        <meshStandardMaterial color="#141414" roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 0.09, 0]}>
+        <cylinderGeometry args={[0.24, 0.24, 0.025, 32]} />
+        <meshStandardMaterial color="#2a2a2a" roughness={0.3} metalness={0.4} />
+      </mesh>
+      <mesh position={[0, 0.075, 0.255]}>
+        <planeGeometry args={[0.16, 0.05]} />
+        <meshStandardMaterial color="#3a0f0f" emissive="#ff4d2e" emissiveIntensity={1.2} />
+      </mesh>
+      <mesh position={[-0.2, 0.075, 0.255]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.025, 0.025, 0.02, 12]} />
+        <meshStandardMaterial color="#3a3a3a" roughness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+/** A small amber reagent bottle — cheap, reusable set dressing scattered on the bench. */
+function ReagentBottle({ position, scale = 1, capColor = "#161616" }: { position: THREE.Vector3Tuple; scale?: number; capColor?: string }) {
+  return (
+    <group position={position} scale={scale}>
+      <mesh castShadow>
+        <cylinderGeometry args={[0.055, 0.06, 0.16, 16]} />
+        <meshPhysicalMaterial color="#7a4a1a" transmission={0.55} roughness={0.25} thickness={0.1} />
+      </mesh>
+      <mesh position={[0, 0.1, 0]}>
+        <cylinderGeometry args={[0.02, 0.03, 0.05, 12]} />
+        <meshPhysicalMaterial color="#7a4a1a" transmission={0.55} roughness={0.25} thickness={0.1} />
+      </mesh>
+      <mesh position={[0, 0.135, 0]}>
+        <cylinderGeometry args={[0.021, 0.021, 0.03, 12]} />
+        <meshStandardMaterial color={capColor} roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+/** A tall lab stool matching the bench height, tucked in the foreground like the reference photo. */
+function BarStool({ position }: { position: THREE.Vector3Tuple }) {
+  const metal = useMemo(() => new THREE.MeshStandardMaterial({ color: "#1c1c1c", metalness: 0.6, roughness: 0.45 }), []);
+  const legOffsets: [number, number][] = [
+    [-0.18, -0.18],
+    [0.18, -0.18],
+    [-0.18, 0.18],
+    [0.18, 0.18],
+  ];
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.62, 0]} castShadow material={metal}>
+        <cylinderGeometry args={[0.22, 0.22, 0.05, 24]} />
+      </mesh>
+      {legOffsets.map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.3, z]} material={metal}>
+          <cylinderGeometry args={[0.02, 0.02, 0.6, 8]} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.15, 0]} material={metal}>
+        <torusGeometry args={[0.22, 0.012, 8, 20]} />
+      </mesh>
+    </group>
+  );
+}
+
+/** A glass-fronted wall cabinet with a shelf of reagent bottles and warm under-shelf light —
+ * mounted flush against a side wall (parallel to the camera's path, never in front/behind it). */
+function WallCabinet({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; rotationY?: number }) {
+  const bottles = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => ({ x: -0.75 + i * 0.24 + seededJitter(i, 500) * 0.04, s: 0.85 + seededJitter(i, 501) * 0.3 })),
+    [],
+  );
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh receiveShadow castShadow>
+        <boxGeometry args={[2, 1.3, 0.32]} />
+        <meshStandardMaterial color="#16181a" roughness={0.5} metalness={0.15} />
+      </mesh>
+      <mesh position={[0, 0, 0.17]}>
+        <planeGeometry args={[1.9, 1.2]} />
+        <meshPhysicalMaterial color="#1c2224" transmission={0.35} roughness={0.15} thickness={0.05} />
+      </mesh>
+      <mesh position={[0, -0.65, 0.1]}>
+        <boxGeometry args={[1.94, 0.03, 0.28]} />
+        <meshStandardMaterial color="#e8c884" emissive="#e8c884" emissiveIntensity={0.9} />
+      </mesh>
+      {bottles.map((b, i) => (
+        <ReagentBottle key={i} position={[b.x, -0.57, 0.05]} scale={b.s} />
+      ))}
+    </group>
+  );
+}
+
 function LabScene() {
   const groupRef = useRef<THREE.Group>(null);
   useStationVisibility(groupRef, STATIONS.lab);
@@ -766,8 +952,10 @@ function LabScene() {
       roughness: 0.9,
       envMapIntensity: 0.1,
     });
-    const benchMat = new THREE.MeshStandardMaterial({ color: "#0f0c09", roughness: 0.4, envMapIntensity: 0.3 });
-    return { wallMat, benchMat };
+    const floorMat = new THREE.MeshStandardMaterial({ color: "#0f0c09", roughness: 0.4, envMapIntensity: 0.3 });
+    const counterMat = new THREE.MeshStandardMaterial({ color: "#7d8286", metalness: 0.75, roughness: 0.32, envMapIntensity: 0.5 });
+    const cabinetMat = new THREE.MeshStandardMaterial({ color: "#141414", roughness: 0.55 });
+    return { wallMat, floorMat, counterMat, cabinetMat };
   }, []);
 
   const steam = useMemo(() => {
@@ -792,11 +980,15 @@ function LabScene() {
     return arr;
   }, []);
 
+  const BENCH_Y = -0.15;
+  const flaskY = BENCH_Y + 0.55;
+  const flaskRadius = 0.38;
+
   return (
     <group ref={groupRef} position={[0, -1, STATIONS.lab]}>
       {/* Floor + side-wall shell — grounds the apparatus instead of leaving it floating in pure
        * fog, without giving up the moody dark-lab read (near-black, almost no fill light). */}
-      <mesh position={[0, -0.82, 0]} rotation={[-Math.PI / 2, 0, 0]} material={materials.benchMat} receiveShadow>
+      <mesh position={[0, -0.82, 0]} rotation={[-Math.PI / 2, 0, 0]} material={materials.floorMat} receiveShadow>
         <planeGeometry args={[11, 26]} />
       </mesh>
       <mesh position={[-5, 3, 0]} rotation={[0, Math.PI / 2, 0]} material={materials.wallMat} receiveShadow>
@@ -806,40 +998,59 @@ function LabScene() {
         <planeGeometry args={[26, 8]} />
       </mesh>
 
-      {/* Podium the flask sits on, perfume-ad style */}
-      <mesh position={[0, -0.55, 0]}>
-        <cylinderGeometry args={[1.6, 1.8, 0.5, 48]} />
-        <meshStandardMaterial color="#15100b" roughness={0.5} metalness={0.3} />
+      {/* Raised stainless bench on a dark cabinet base, replacing the round "perfume podium" —
+       * the reference is a real lab bench at counter height, not a display pedestal. */}
+      <mesh position={[0, BENCH_Y - 0.04, 0.7]} material={materials.counterMat} castShadow receiveShadow>
+        <boxGeometry args={[7.6, 0.08, 2.4]} />
       </mesh>
-      {/* Heating mantle glow beneath the flask — the actual heat source the methodology describes */}
-      <mesh position={[0, -0.28, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.55, 0.75, 32]} />
-        <meshStandardMaterial color="#c0562a" emissive="#e2712f" emissiveIntensity={1.6} roughness={0.5} />
+      <mesh position={[0, -0.525, 0.7]} material={materials.cabinetMat} receiveShadow>
+        <boxGeometry args={[7.4, 0.59, 2.2]} />
       </mesh>
-      <pointLight position={[0, -0.2, 0]} intensity={4} distance={4} decay={2} color="#e2712f" />
-      {/* Flask */}
-      <mesh ref={flaskRef} position={[0, 0.6, 0]} castShadow>
-        <sphereGeometry args={[1, 32, 32]} />
-        <meshPhysicalMaterial
-          color={PALETTE.secondary}
-          transmission={0.85}
-          roughness={0.08}
-          thickness={0.6}
-          ior={1.4}
-        />
+      <WallCabinet position={[-4.83, 1.6, -2.6]} rotationY={Math.PI / 2} />
+      <Window position={[4.9, 1.9, -2.8]} />
+      <PottedPlant position={[4.3, -0.82, -3.6]} scale={1.1} />
+      <Poster position={[4.83, 2.1, 1.6]} rotationY={-Math.PI / 2} label={"AROMATIC COMPOUNDS\nTERPENES"} />
+      <Poster position={[4.83, 2.1, 4]} rotationY={-Math.PI / 2} label={"NATURAL SCIENCE\nBETTER FUTURE"} />
+      <PendantLight position={[0, 2.9, 0.7]} width={4} />
+      <BarStool position={[0, -0.82, 2.6]} />
+
+      {/* The whole apparatus cluster sits pushed back from the camera's exact path — a tall
+       * vertical condenser sitting right on the flight line at the "hero" moment reads as an
+       * extreme, cropped close-up instead of the wide establishing shot the reference has, the
+       * same trap the classroom's teacher's desk fell into. */}
+      <group position={[0, 0, -1.3]}>
+      {/* Heating mantle / hotplate the flask sits on */}
+      <HotPlate position={[0, BENCH_Y + 0.07, 0]} />
+      <pointLight position={[0, BENCH_Y + 0.2, 0]} intensity={3} distance={3} decay={2} color="#ff5a30" />
+
+      {/* Retort stand gripping the flask with a real C-shaped clamp, not a floating donut */}
+      <RetortStand
+        position={[-0.75, BENCH_Y, 0]}
+        rotationY={Math.PI / 2}
+        rodHeight={1.15}
+        clampHeight={flaskY - BENCH_Y}
+        clampRadius={flaskRadius + 0.02}
+        standReach={0.75}
+      />
+
+      {/* Flask — clear glass with a separate amber liquid pool, not one flat tinted-glass sphere */}
+      <mesh ref={flaskRef} position={[0, flaskY, 0]} castShadow>
+        <sphereGeometry args={[flaskRadius, 32, 32]} />
+        <meshPhysicalMaterial color="#f2f6f2" transmission={0.93} roughness={0.04} thickness={0.25} ior={1.5} />
       </mesh>
-      {/* Condenser */}
-      <mesh position={[0, 2.6, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.18, 0.18, 2.4, 16]} />
-        <meshPhysicalMaterial color="#e8d9b5" transmission={0.7} roughness={0.15} />
+      <mesh position={[0, flaskY - flaskRadius * 0.32, 0]}>
+        <sphereGeometry args={[flaskRadius * 0.82, 24, 24]} />
+        <meshPhysicalMaterial color={PALETTE.primary} transmission={0.55} roughness={0.15} thickness={0.3} />
       </mesh>
-      {/* Ring stand */}
-      <mesh position={[0, 0.6, 0]}>
-        <torusGeometry args={[1.3, 0.03, 8, 32]} />
-        <meshStandardMaterial color={PALETTE.accent} metalness={0.7} roughness={0.25} />
+      <mesh position={[0, flaskY + flaskRadius * 0.92, 0]}>
+        <cylinderGeometry args={[flaskRadius * 0.24, flaskRadius * 0.3, flaskRadius * 0.4, 16]} />
+        <meshPhysicalMaterial color="#f2f6f2" transmission={0.9} roughness={0.05} thickness={0.15} />
       </mesh>
 
-      <points position={[0, 1.5, 0]}>
+      {/* Liebig condenser, vertical, feeding straight up out of the flask neck */}
+      <LiebigCondenser position={[0, flaskY + flaskRadius * 1.5, 0]} />
+
+      <points position={[0, flaskY + 0.6, 0]}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[steam, 3]} />
         </bufferGeometry>
@@ -848,7 +1059,7 @@ function LabScene() {
 
       {/* Graduated collection cylinder — a small glass tube catching the separated oil, the actual
        * measurement the whole experiment comes down to (yield %, per the methodology text). */}
-      <group position={[1.9, -0.78, 1.9]}>
+      <group position={[1.7, BENCH_Y, 1.3]}>
         <mesh position={[0, 0.35, 0]} castShadow>
           <cylinderGeometry args={[0.14, 0.14, 0.7, 20, 1, true]} />
           <meshPhysicalMaterial color="#dfe6e0" transmission={0.9} roughness={0.05} thickness={0.15} side={THREE.DoubleSide} />
@@ -862,13 +1073,23 @@ function LabScene() {
           <meshStandardMaterial color={PALETTE.primary} emissive={PALETTE.primary} emissiveIntensity={0.4} roughness={0.3} />
         </mesh>
       </group>
+      <ReagentBottle position={[2.15, BENCH_Y + 0.08, 1.1]} />
+      <ReagentBottle position={[2.35, BENCH_Y + 0.08, 1.45]} scale={0.85} />
 
       {/* Ultrasonic bath — Condition B (UAHD) sitting right next to the classic setup, the actual
        * comparison the whole TDR is built around, not just a lone hero flask. */}
-      <group position={[-2.6, -0.5, 1.4]}>
+      <group position={[-2.3, BENCH_Y + 0.3, 0.4]}>
         <mesh castShadow receiveShadow>
           <boxGeometry args={[1.3, 0.6, 0.9]} />
-          <meshStandardMaterial color="#12181c" roughness={0.45} metalness={0.2} />
+          <meshStandardMaterial color="#3a3d40" roughness={0.4} metalness={0.5} />
+        </mesh>
+        <mesh position={[0, 0, 0.46]}>
+          <planeGeometry args={[1.1, 0.3]} />
+          <meshStandardMaterial color="#101214" roughness={0.4} />
+        </mesh>
+        <mesh position={[0.35, 0, 0.465]}>
+          <circleGeometry args={[0.03, 16]} />
+          <meshStandardMaterial color="#7ee0b8" emissive="#7ee0b8" emissiveIntensity={1.2} />
         </mesh>
         <mesh position={[0, 0.31, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[1.15, 0.75]} />
@@ -884,13 +1105,14 @@ function LabScene() {
       </group>
 
       {/* Raw material floating beside the flask — kept on the right, clear of the left-aligned text card */}
-      <Flower position={[2.6, 1.2, 1.4]} scale={0.85} />
+      <Flower position={[2.3, flaskY + 0.15, 1.1]} scale={0.75} />
 
       {/* Dramatic diagonal shaft, echoing the perfume-bottle reference */}
       <LightBeam position={[2.2, 5, -1]} rotation={[0, 0, 0.5]} length={9} radius={1.6} opacity={0.18} />
       <pointLight position={[0, 1.5, 2.5]} intensity={20} color={PALETTE.accent} />
       <pointLight position={[2, 3, 2]} intensity={10} color={PALETTE.secondary} />
       <pointLight position={[2.6, 2, 1.4]} intensity={10} color={PALETTE.primary} />
+      </group>
     </group>
   );
 }
