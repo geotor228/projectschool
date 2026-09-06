@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, ContactShadows, Text, MeshReflectorMaterial } from "@react-three/drei";
+import { Environment, ContactShadows, Text, MeshReflectorMaterial, RoundedBox } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
@@ -253,22 +253,16 @@ function Desk({
   ];
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
-      {/* Tabletop */}
-      <mesh position={[0, 0.75, 0]} material={woodMat} castShadow receiveShadow>
-        <boxGeometry args={[1.3, 0.06, 0.75]} />
-      </mesh>
+      {/* Tabletop — a real eased edge instead of a razor-sharp CG box corner */}
+      <RoundedBox args={[1.3, 0.06, 0.75]} radius={0.015} smoothness={2} position={[0, 0.75, 0]} material={woodMat} castShadow receiveShadow />
       {legPositions.map((lp, i) => (
         <mesh key={i} position={[lp[0], 0.37, lp[2]]} material={metalMat}>
           <cylinderGeometry args={[0.03, 0.03, 0.74, 8]} />
         </mesh>
       ))}
       {/* Chair, offset behind the desk — its own olive plastic-shell material, not the desk's wood */}
-      <mesh position={[0, 0.42, 0.62]} material={chairMat} castShadow>
-        <boxGeometry args={[0.55, 0.06, 0.5]} />
-      </mesh>
-      <mesh position={[0, 0.75, 0.85]} material={chairMat} castShadow>
-        <boxGeometry args={[0.55, 0.65, 0.06]} />
-      </mesh>
+      <RoundedBox args={[0.55, 0.06, 0.5]} radius={0.02} smoothness={2} position={[0, 0.42, 0.62]} material={chairMat} castShadow />
+      <RoundedBox args={[0.55, 0.65, 0.06]} radius={0.03} smoothness={2} position={[0, 0.75, 0.85]} material={chairMat} castShadow />
       <mesh position={[-0.24, 0.2, 0.6]} material={metalMat}>
         <cylinderGeometry args={[0.025, 0.025, 0.4, 6]} />
       </mesh>
@@ -484,6 +478,8 @@ function ClassroomScene() {
     const woodMat = new THREE.MeshStandardMaterial({
       map: deskWood.map,
       roughnessMap: deskWood.roughnessMap,
+      normalMap: deskWood.normalMap,
+      normalScale: new THREE.Vector2(0.6, 0.6),
       roughness: 0.5,
       envMapIntensity: 0.2,
     });
@@ -501,6 +497,8 @@ function ClassroomScene() {
     const floorMat = new THREE.MeshStandardMaterial({
       map: floorWood.map,
       roughnessMap: floorWood.roughnessMap,
+      normalMap: floorWood.normalMap,
+      normalScale: new THREE.Vector2(0.5, 0.5),
       roughness: 0.55,
       envMapIntensity: 0.18,
     });
@@ -517,11 +515,14 @@ function ClassroomScene() {
     const wallMat = new THREE.MeshStandardMaterial({
       map: wallPlaster.map,
       roughnessMap: wallPlaster.roughnessMap,
+      normalMap: wallPlaster.normalMap,
+      normalScale: new THREE.Vector2(0.35, 0.35),
       roughness: 0.92,
       envMapIntensity: 0.1,
     });
     const ceilingMat = new THREE.MeshStandardMaterial({ color: "#e9e5d8", roughness: 0.95 });
-    return { woodMat, metalMat, chairMat, floorMat, slateMat, wallMat, ceilingMat };
+    const trimMat = new THREE.MeshStandardMaterial({ color: "#4a3a26", roughness: 0.55 });
+    return { woodMat, metalMat, chairMat, floorMat, slateMat, wallMat, ceilingMat, trimMat };
   }, []);
 
   // Slight per-desk position/rotation jitter so the row reads as real furniture, not a grid of
@@ -563,6 +564,42 @@ function ClassroomScene() {
       <mesh position={[0, 8, -2]} rotation={[Math.PI / 2, 0, 0]} material={materials.ceilingMat} receiveShadow>
         <planeGeometry args={[14, 30]} />
       </mesh>
+
+      {/* Baseboard trim along both walls — a small thing, but a wall that just ends flush into
+       * the floor with no transition is one of the fastest tells of a CG room. */}
+      <mesh position={[-6.97, 0.07, -2]} material={materials.trimMat}>
+        <boxGeometry args={[0.04, 0.14, 30]} />
+      </mesh>
+      <mesh position={[6.97, 0.07, -2]} material={materials.trimMat}>
+        <boxGeometry args={[0.04, 0.14, 30]} />
+      </mesh>
+
+      {/* Light switch + outlet — mundane wall hardware nobody designs on purpose but every real
+       * room has, and its absence is part of why a bare wall reads as a stage set. */}
+      <group position={[6.97, 1.15, 2]} rotation={[0, Math.PI / 2, 0]}>
+        <mesh>
+          <boxGeometry args={[0.09, 0.14, 0.012]} />
+          <meshStandardMaterial color="#f2efe6" roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0, 0.009]}>
+          <boxGeometry args={[0.025, 0.05, 0.01]} />
+          <meshStandardMaterial color="#dedacc" roughness={0.4} />
+        </mesh>
+      </group>
+      <group position={[6.97, 0.28, 2.6]} rotation={[0, Math.PI / 2, 0]}>
+        <mesh>
+          <boxGeometry args={[0.1, 0.1, 0.012]} />
+          <meshStandardMaterial color="#f2efe6" roughness={0.5} />
+        </mesh>
+        <mesh position={[-0.02, 0, 0.009]}>
+          <boxGeometry args={[0.012, 0.03, 0.01]} />
+          <meshStandardMaterial color="#2a2a26" />
+        </mesh>
+        <mesh position={[0.02, 0, 0.009]}>
+          <boxGeometry args={[0.012, 0.03, 0.01]} />
+          <meshStandardMaterial color="#2a2a26" />
+        </mesh>
+      </group>
 
       {/* Ceiling fixtures: a long linear pendant light and a small projector, both mundane real-room
        * details that do a lot of work to sell "this is a real classroom, not a stage set." */}
@@ -612,9 +649,7 @@ function ClassroomScene() {
       {/* Teacher's desk, larger, facing the class — pushed back near the board so the camera's
        * flight path (which runs straight down the center aisle) never grazes it at close range. */}
       <group position={[0, 0, -5.5]}>
-        <mesh position={[0, 0.5, 0]} material={materials.woodMat} castShadow receiveShadow>
-          <boxGeometry args={[2.2, 0.08, 0.9]} />
-        </mesh>
+        <RoundedBox args={[2.2, 0.08, 0.9]} radius={0.018} smoothness={2} position={[0, 0.5, 0]} material={materials.woodMat} castShadow receiveShadow />
         <mesh position={[-0.95, 0.25, 0]} material={materials.metalMat}>
           <boxGeometry args={[0.08, 0.5, 0.85]} />
         </mesh>

@@ -29,6 +29,40 @@ function speckle(ctx: CanvasRenderingContext2D, size: number, seed: number, dens
   ctx.globalAlpha = 1;
 }
 
+/** Converts a grayscale height canvas into a tangent-space normal map via a finite-difference
+ * (Sobel-like) gradient — real per-pixel surface detail (grain ridges, plaster pitting) that
+ * catches light correctly under moving/angled lights, instead of just a flat color+roughness
+ * surface that only ever looks like a photo pasted on a plane. */
+function heightToNormalMap(heightCanvas: HTMLCanvasElement, strength = 2.2): HTMLCanvasElement {
+  const w = heightCanvas.width;
+  const h = heightCanvas.height;
+  const src = heightCanvas.getContext("2d")!.getImageData(0, 0, w, h).data;
+  const heightAt = (x: number, y: number) => {
+    const xi = (x + w) % w;
+    const yi = (y + h) % h;
+    return src[(yi * w + xi) * 4] / 255;
+  };
+  const out = document.createElement("canvas");
+  out.width = w;
+  out.height = h;
+  const outCtx = out.getContext("2d")!;
+  const outData = outCtx.createImageData(w, h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const dx = (heightAt(x - 1, y) - heightAt(x + 1, y)) * strength;
+      const dy = (heightAt(x, y - 1) - heightAt(x, y + 1)) * strength;
+      const len = Math.sqrt(dx * dx + dy * dy + 1);
+      const idx = (y * w + x) * 4;
+      outData.data[idx] = ((dx / len) * 0.5 + 0.5) * 255;
+      outData.data[idx + 1] = ((dy / len) * 0.5 + 0.5) * 255;
+      outData.data[idx + 2] = ((1 / len) * 0.5 + 0.5) * 255;
+      outData.data[idx + 3] = 255;
+    }
+  }
+  outCtx.putImageData(outData, 0, 0);
+  return out;
+}
+
 type WoodOptions = {
   base: string;
   dark: string;
@@ -110,7 +144,13 @@ export function createWoodTexture({ base, dark, light, size = 512, repeat = [1, 
   roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping;
   roughnessMap.repeat.set(repeat[0], repeat[1]);
 
-  return { map, roughnessMap };
+  // The grain pattern doubles as a heightmap: real ridges that catch light at an angle, instead
+  // of grain that's only ever a flat painted-on color.
+  const normalMap = new THREE.CanvasTexture(heightToNormalMap(rough.canvas, 1.6));
+  normalMap.wrapS = normalMap.wrapT = THREE.RepeatWrapping;
+  normalMap.repeat.set(repeat[0], repeat[1]);
+
+  return { map, roughnessMap, normalMap };
 }
 
 type PlasterOptions = {
@@ -161,7 +201,11 @@ export function createPlasterTexture({ base, dark, light, size = 512, repeat = [
   roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping;
   roughnessMap.repeat.set(repeat[0], repeat[1]);
 
-  return { map, roughnessMap };
+  const normalMap = new THREE.CanvasTexture(heightToNormalMap(rough.canvas, 1.1));
+  normalMap.wrapS = normalMap.wrapT = THREE.RepeatWrapping;
+  normalMap.repeat.set(repeat[0], repeat[1]);
+
+  return { map, roughnessMap, normalMap };
 }
 
 /** Suspended acoustic ceiling tiles: a grid of panels with dark seam lines and a fine speckled
