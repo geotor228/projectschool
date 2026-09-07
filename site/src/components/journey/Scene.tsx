@@ -730,7 +730,9 @@ function ClassroomScene() {
     <group ref={groupRef} position={[0, -1.5, STATIONS.classroom]}>
       {/* Floor */}
       <mesh position={[0, -0.02, -2]} rotation={[-Math.PI / 2, 0, 0]} material={materials.floorMat} receiveShadow>
-        <planeGeometry args={[14, 12]} />
+        {/* Runs the full length of the side walls. At 12 deep it stopped well short of where the
+         * room becomes visible, so the approach was flown in over a black void. */}
+        <planeGeometry args={[14, 30]} />
       </mesh>
 
       {/* Room shell: side walls + ceiling only — never a front/back wall, since the camera flies
@@ -1192,10 +1194,12 @@ function PendantLight({ position, width = 5, dropFrom = 1.1 }: { position: THREE
         <boxGeometry args={[width * 0.94, 0.03, 0.14]} />
         <meshStandardMaterial color="#fff6df" emissive="#fff6df" emissiveIntensity={1.6} />
       </mesh>
+      {/* Suspension rods. At 6 mm they vanished at room distance and the fitting read as a dark
+       * bar floating under the ceiling; thick enough now to actually be seen holding it up. */}
       {[-width * 0.38, width * 0.38].map((x, i) => (
         <mesh key={i} position={[x, dropFrom / 2 + 0.07, 0]}>
-          <cylinderGeometry args={[0.006, 0.006, dropFrom, 6]} />
-          <meshStandardMaterial color="#0d0d0d" />
+          <cylinderGeometry args={[0.014, 0.014, dropFrom, 6]} />
+          <meshStandardMaterial color="#15181a" roughness={0.5} metalness={0.4} />
         </mesh>
       ))}
     </group>
@@ -1790,13 +1794,13 @@ function LabScene() {
       {/* Floor + wall shell. Tile underfoot, matte white walls, and — new — a real back wall, so
        * the room ends in something instead of fading into fog behind the apparatus. */}
       <mesh position={[0, -0.82, 0]} rotation={[-Math.PI / 2, 0, 0]} material={materials.floorMat} receiveShadow>
-        <planeGeometry args={[11, 26]} />
+        <planeGeometry args={[11, 34]} />
       </mesh>
       <mesh position={[-5, 3, 0]} rotation={[0, Math.PI / 2, 0]} material={materials.wallMat} receiveShadow>
-        <planeGeometry args={[26, 8]} />
+        <planeGeometry args={[34, 8]} />
       </mesh>
       <mesh position={[5, 3, 0]} rotation={[0, -Math.PI / 2, 0]} material={materials.wallMat} receiveShadow>
-        <planeGeometry args={[26, 8]} />
+        <planeGeometry args={[34, 8]} />
       </mesh>
       {/* Set well back at z -10. The room dissolves out by z -40.5 in world terms, and at anything
        * closer than about 3.5 units a 5-metre chart simply fills the frame — the camera ended up
@@ -1805,7 +1809,7 @@ function LabScene() {
         <planeGeometry args={[11, 5.22]} />
       </mesh>
       <mesh position={[0, 4.4, 0]} rotation={[Math.PI / 2, 0, 0]} material={materials.ceilingMat} receiveShadow>
-        <planeGeometry args={[11, 26]} />
+        <planeGeometry args={[11, 34]} />
       </mesh>
       {/* Skirting where the tile meets the wall — a coved edge, as in any wet-work room */}
       <mesh position={[0, -0.75, -9.96]} material={materials.frameMat}>
@@ -1889,8 +1893,8 @@ function LabScene() {
         width={1.3}
       />
       <Poster position={[4.83, 2.1, 4]} rotationY={-Math.PI / 2} label={"NATURAL SCIENCE\nBETTER FUTURE"} />
-      <PendantLight position={[0, 2.9, 0.7]} width={4} dropFrom={1.4} />
-      <PendantLight position={[0, 2.9, -4.2]} width={4} dropFrom={1.4} />
+      <PendantLight position={[0, 2.9, 0.7]} width={4} dropFrom={1.45} />
+      <PendantLight position={[0, 2.9, -4.2]} width={4} dropFrom={1.45} />
       <BarStool position={[0, -0.82, 2.6]} />
 
       {/* Room lighting for a white room: broad, soft and even. Sky-toned bounce from above and a
@@ -2455,16 +2459,16 @@ function MoleculeScene() {
       {/* Room shell: bright, cool, symmetrical — side walls only (camera-safe), floor, and a
        * suspended white acoustic-tile ceiling with flush light panels instead of one dramatic beam. */}
       <mesh position={[-WALL_X, (FLOOR_Y + CEILING_Y) / 2, 0]} rotation={[0, Math.PI / 2, 0]} material={roomMaterials.wallMat} receiveShadow>
-        <planeGeometry args={[26, CEILING_Y - FLOOR_Y]} />
+        <planeGeometry args={[34, CEILING_Y - FLOOR_Y]} />
       </mesh>
       <mesh position={[WALL_X, (FLOOR_Y + CEILING_Y) / 2, 0]} rotation={[0, -Math.PI / 2, 0]} material={roomMaterials.wallMat} receiveShadow>
-        <planeGeometry args={[26, CEILING_Y - FLOOR_Y]} />
+        <planeGeometry args={[34, CEILING_Y - FLOOR_Y]} />
       </mesh>
       <mesh position={[0, FLOOR_Y, 0]} rotation={[-Math.PI / 2, 0, 0]} material={roomMaterials.floorMat} receiveShadow>
-        <planeGeometry args={[WALL_X * 2, 26]} />
+        <planeGeometry args={[WALL_X * 2, 34]} />
       </mesh>
       <mesh position={[0, CEILING_Y, 0]} rotation={[Math.PI / 2, 0, 0]} material={roomMaterials.ceilingMat} receiveShadow>
-        <planeGeometry args={[WALL_X * 2, 26]} />
+        <planeGeometry args={[WALL_X * 2, 34]} />
       </mesh>
       {[-6.4, -3.2, 0, 3.2, 6.4].map((z, i) => (
         <mesh key={i} position={[0, CEILING_Y - 0.02, z]} rotation={[Math.PI / 2, 0, 0]}>
@@ -2838,31 +2842,33 @@ function HorizonScene() {
 
   return (
     <group ref={sceneRef} position={[0, 0, STATIONS.horizon]}>
-      {/* Enclosing dome in deep forest green. It is no longer the picture itself — it's the colour
-       * behind the picture, so that if the camera's sway ever swings past the edge of the photo
-       * plane it finds woodland shadow rather than black void. */}
-      <mesh position={[0, 0.3, 0]}>
-        <sphereGeometry args={[22, 24, 24]} />
-        <meshBasicMaterial color="#1d2a1c" toneMapped={false} side={THREE.BackSide} />
-      </mesh>
+      {/* There is deliberately no enclosing dome any more. A 22-unit sphere sat closer to the
+       * camera at wide angles than the backdrop 26 units ahead, so towards the edges of frame the
+       * ray hit the dome first and the photograph appeared as a dark oval porthole. It also
+       * wrapped the molecule room during the crossfade. The plane below is simply sized with
+       * enough margin to fill the frame at every distance this scene is visible from. */}
 
       {/* The forest itself: one large plane carrying the photograph, sized on the image's own
-       * 3:2 aspect so nothing is stretched, and set far enough back that it fills the frame from
-       * the moment this scene fades in right through to where the scroll ends. */}
-      <mesh position={[0, 2.4, -12]}>
-        <planeGeometry args={[46, 30.7]} />
-        <meshBasicMaterial map={forest} toneMapped={false} />
+       * 3:2 aspect so nothing is stretched. */}
+      {/* fog={false} matters here. The scene's exponential fog is computed per fragment from the
+       * camera distance, and on a plane this large the corners are half again as far away as the
+       * centre — so the fog ate the edges and the photograph read as a dark oval porthole with
+       * black around it, worst of all on the approach when the whole plane is in frame. */}
+      <mesh position={[0, 1.5, -12]}>
+        <planeGeometry args={[64, 42.7]} />
+        <meshBasicMaterial map={forest} toneMapped={false} fog={false} />
       </mesh>
       {/* Vignette panel in front of the photo: transparent in the middle, darkening toward the
        * edges, so the closing text card keeps its contrast against a bright, busy image. */}
-      <mesh position={[0, 2.4, -11.6]}>
-        <planeGeometry args={[46, 30.7]} />
+      <mesh position={[0, 1.5, -11.6]}>
+        <planeGeometry args={[64, 42.7]} />
         <meshBasicMaterial
           map={vignette}
           transparent
-          opacity={0.85}
+          opacity={0.6}
           depthWrite={false}
           toneMapped={false}
+          fog={false}
         />
       </mesh>
 

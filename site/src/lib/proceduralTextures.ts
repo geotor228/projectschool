@@ -1000,11 +1000,14 @@ export function createLabDiagramTexture(kind: DiagramKind, width = 640) {
 /** A soft vignette: clear through the middle, darkening toward the edges. Laid over a photographic
  * backdrop it pulls the corners down so overlaid text keeps its contrast, without flattening the
  * middle of the picture. */
-export function createVignetteTexture(size = 512, color = "10,16,10", strength = 0.82) {
+export function createVignetteTexture(size = 512, color = "10,16,10", strength = 0.45) {
   const { canvas, ctx } = makeCanvas(size);
-  const grad = ctx.createRadialGradient(size / 2, size / 2, size * 0.12, size / 2, size / 2, size * 0.72);
+  // Clear well past the middle, then a gentle ramp. The darkening has to read as falloff at the
+  // very edge of frame, never as a ring — when the whole plane is in view at a distance, a strong
+  // early ramp turns the picture into an oval porthole.
+  const grad = ctx.createRadialGradient(size / 2, size / 2, size * 0.34, size / 2, size / 2, size * 0.78);
   grad.addColorStop(0, `rgba(${color},0)`);
-  grad.addColorStop(0.55, `rgba(${color},${strength * 0.25})`);
+  grad.addColorStop(0.7, `rgba(${color},${strength * 0.18})`);
   grad.addColorStop(1, `rgba(${color},${strength})`);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, size, size);
