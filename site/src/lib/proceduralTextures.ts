@@ -607,34 +607,52 @@ export function createAcousticTileTexture(size = 512, tilesPerSide = 4, color = 
 /** A monitor screen showing a glowing data chart — background-equipment set dressing for a modern
  * research-lab scene, cheap to read as "busy computer" even at a glance/distance. */
 export function createDataScreenTexture(size = 256, hue: "blue" | "green" = "blue") {
-  const { canvas, ctx } = makeCanvas(size);
+  return createDataScreen(size, Math.round(size * 0.625), hue);
+}
+
+/** Screens are wider than they are tall, so the canvas has to be too. Drawing the chart on a square
+ * canvas and stretching it across a 16:10 monitor is what made the trace look like it was leaping
+ * off the panel. The trace is also clamped to a plot band with real margins, so it can never run
+ * past the top or bottom edge. */
+export function createDataScreen(width = 320, height = 200, hue: "blue" | "green" = "blue") {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d")!;
+
   ctx.fillStyle = "#081018";
-  ctx.fillRect(0, 0, size, size);
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.1)";
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 5; i++) {
+    const y = (i / 5) * height;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+
   const line = hue === "blue" ? "#5ec8f2" : "#6bd88a";
+  const top = height * 0.3;
+  const bottom = height * 0.86;
   ctx.strokeStyle = line;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = Math.max(1.5, height * 0.011);
   ctx.beginPath();
-  const points = 24;
+  const points = 26;
   for (let i = 0; i <= points; i++) {
-    const x = (i / points) * size;
-    const y = size * 0.65 - Math.abs(Math.sin(i * 0.9 + hash(i, 0, 60) * 4)) * size * 0.35 - hash(i, 1, 61) * size * 0.08;
+    const x = (i / points) * width;
+    const t = Math.min(1, Math.abs(Math.sin(i * 0.9 + hash(i, 0, 60) * 4)) * 0.78 + hash(i, 1, 61) * 0.2);
+    const y = bottom - t * (bottom - top);
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   }
   ctx.stroke();
-  ctx.strokeStyle = "rgba(255,255,255,0.12)";
-  ctx.lineWidth = 1;
-  for (let i = 1; i < 5; i++) {
-    const y = (i / 5) * size;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(size, y);
-    ctx.stroke();
-  }
+
   ctx.fillStyle = line;
+  ctx.globalAlpha = 0.6;
   for (let i = 0; i < 6; i++) {
-    ctx.globalAlpha = 0.6;
-    ctx.fillRect(size * 0.05 + i * size * 0.14, size * 0.08, size * 0.08, size * 0.02);
+    ctx.fillRect(width * 0.05 + i * width * 0.14, height * 0.1, width * 0.08, height * 0.032);
   }
   ctx.globalAlpha = 1;
 

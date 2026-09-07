@@ -18,6 +18,7 @@ import {
   createPlasterTexture,
   createAcousticTileTexture,
   createDataScreenTexture,
+  createDataScreen,
   createGlowSpriteTexture,
   createVignetteTexture,
 } from "@/lib/proceduralTextures";
@@ -219,6 +220,80 @@ function Starfield() {
   );
 }
 
+/** The opening frame had nothing below the title — the starfield is thin and evenly spread, so the
+ * bottom third of the screen was flat black and read as missing content rather than as space. This
+ * fills that band: a low sheet of lit mist and a denser drift of pollen through the lower field,
+ * both kept well under the camera's own height so nothing is ever flown through. */
+function HeroFoyer() {
+  const glow = useMemo(() => createGlowSpriteTexture(128), []);
+
+  const motes = useMemo(() => {
+    const count = 260;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const gold = new THREE.Color(PALETTE.primary);
+    const leaf = new THREE.Color(PALETTE.leafBright);
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = (seededJitter(i, 940) - 0.5) * 34;
+      // Concentrated below eye level, thinning upward — the opposite of the even starfield.
+      positions[i * 3 + 1] = -0.6 - Math.pow(seededJitter(i, 941), 0.7) * 7;
+      positions[i * 3 + 2] = 8 - seededJitter(i, 942) * 26;
+      const c = seededJitter(i, 943) > 0.68 ? leaf : gold;
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+    }
+    return { positions, colors };
+  }, []);
+
+  const ref = useRef<THREE.Points>(null);
+  useFrame((state) => {
+    if (ref.current && !prefersReducedMotion) {
+      ref.current.position.y = Math.sin(state.clock.elapsedTime * 0.12) * 0.25;
+    }
+  });
+
+  return (
+    <group>
+      {/* Two overlapping sheets of mist lying low, additive so they only ever lift the black
+       * rather than painting a visible surface over it. */}
+      {[
+        { y: -3.2, z: -1, s: 30, o: 0.16 },
+        { y: -5.4, z: -8, s: 44, o: 0.11 },
+      ].map((m, i) => (
+        <mesh key={i} position={[0, m.y, m.z]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[m.s, m.s * 0.7]} />
+          <meshBasicMaterial
+            map={glow}
+            color={PALETTE.primary}
+            transparent
+            opacity={m.o}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      ))}
+
+      <points ref={ref}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[motes.positions, 3]} />
+          <bufferAttribute attach="attributes-color" args={[motes.colors, 3]} />
+        </bufferGeometry>
+        <pointsMaterial
+          size={0.16}
+          map={glow}
+          vertexColors
+          transparent
+          opacity={0.55}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          sizeAttenuation
+        />
+      </points>
+    </group>
+  );
+}
+
 /** A small cluster of glowing spore/pollen particles with a soft light of their own, sitting at
  * the midpoint between two stations. Each set's own lighting is tightly clustered around its
  * furniture, so the travel corridor between sets was falling to near-black fog no matter how the
@@ -349,9 +424,12 @@ function Desk({
 }
 
 /** A tall window strip on the side wall, glowing like late-afternoon light through glass. */
-function Window({ position }: { position: THREE.Vector3Tuple }) {
+/** A window in a side wall. It takes a rotation because a bare plane faces +Z: mounted on the left
+ * wall without one it lay across the wall instead of in it, half the pane sticking out of the
+ * building and the glass facing down the room rather than into it. */
+function Window({ position, rotationY = 0 }: { position: THREE.Vector3Tuple; rotationY?: number }) {
   return (
-    <group position={position}>
+    <group position={position} rotation={[0, rotationY, 0]}>
       <mesh>
         <planeGeometry args={[1.4, 3.2]} />
         <meshStandardMaterial color="#f4ecd8" emissive="#f4ecd8" emissiveIntensity={0.8} transparent opacity={0.55} />
@@ -526,7 +604,9 @@ function PottedPlant({ position, scale = 1 }: { position: THREE.Vector3Tuple; sc
 
 function ClassroomScene() {
   const groupRef = useRef<THREE.Group>(null);
-  useStationDissolve(groupRef, STATIONS.classroom);
+  // Fades in a little earlier than the default so the room is already materialising out of the
+  // fog while the title is still up, instead of the lower frame staying empty until it snaps in.
+  useStationDissolve(groupRef, STATIONS.classroom, { inAt: 16, outAt: 6, fade: 3 });
 
   // Shared material + texture instances (created once, reused across every desk/chair mesh)
   // rather than one meshStandardMaterial per box, per the threejs "share material instances" guideline.
@@ -945,8 +1025,8 @@ function ClassroomScene() {
       ))}
 
       {/* Windows down the left wall */}
-      <Window position={[-6.9, 2.8, -3]} />
-      <Window position={[-6.9, 2.8, 0]} />
+      <Window position={[-6.95, 2.8, -3]} rotationY={Math.PI / 2} />
+      <Window position={[-6.95, 2.8, 0]} rotationY={Math.PI / 2} />
 
       {/* The room's entrance — every real classroom has one; this one had none */}
       <LabDoor position={[6.95, 1.25, 4]} rotationY={-Math.PI / 2} />
@@ -1765,19 +1845,19 @@ function LabScene() {
       />
 
       {/* Raised worktop on a cabinet base — light laminate on steel rather than the old dark slab */}
-      <mesh position={[0, BENCH_Y - 0.04, 0.7]} material={materials.counterMat} castShadow receiveShadow>
-        <boxGeometry args={[7.6, 0.08, 2.4]} />
+      <mesh position={[0, BENCH_Y - 0.04, 0.1]} material={materials.counterMat} castShadow receiveShadow>
+        <boxGeometry args={[7.6, 0.08, 3.6]} />
       </mesh>
-      <mesh position={[0, -0.525, 0.7]} material={materials.cabinetMat} receiveShadow>
-        <boxGeometry args={[7.4, 0.59, 2.2]} />
+      <mesh position={[0, -0.525, 0.1]} material={materials.cabinetMat} receiveShadow>
+        <boxGeometry args={[7.4, 0.59, 3.4]} />
       </mesh>
       {/* Steel frame and toe kick under the worktop, so the bench reads as lab furniture on legs */}
-      <mesh position={[0, -0.79, 0.7]} material={materials.frameMat}>
-        <boxGeometry args={[7.2, 0.06, 2]} />
+      <mesh position={[0, -0.79, 0.1]} material={materials.frameMat}>
+        <boxGeometry args={[7.2, 0.06, 3.2]} />
       </mesh>
       {[-3.5, 3.5].map((x, i) => (
-        <mesh key={i} position={[x, -0.5, 0.7]} material={materials.frameMat}>
-          <boxGeometry args={[0.07, 0.64, 2.2]} />
+        <mesh key={i} position={[x, -0.5, 0.1]} material={materials.frameMat}>
+          <boxGeometry args={[0.07, 0.64, 3.4]} />
         </mesh>
       ))}
       {/* Cabinet doors + handles */}
@@ -1912,7 +1992,7 @@ function LabScene() {
       </group>
 
       {/* Raw material floating beside the flask — kept on the right, clear of the left-aligned text card */}
-      <Flower position={[2.3, flaskY + 0.15, 1.1]} scale={0.75} />
+      <Flower position={[2.3, BENCH_Y + 0.04, 1.1]} scale={0.75} />
 
       {/* Accent on the apparatus itself: a soft, near-neutral spot from the ceiling, aimed down at
        * the bench. The old lighting here was a gold volumetric shaft plus gold and wine point
@@ -2006,11 +2086,19 @@ function LabFigure({
 /** A monitor on a small stand, screen glowing with a data-chart texture — background-equipment
  * set dressing that reads as "busy modern lab" from across the room. */
 function MonitorProp({ position, rotationY = 0, hue = "blue" }: { position: THREE.Vector3Tuple; rotationY?: number; hue?: "blue" | "green" }) {
-  const screen = useMemo(() => createDataScreenTexture(256, hue), [hue]);
+  // Panel aspect, matched to the bezel opening below. A square texture stretched across a 16:10
+  // screen is what made the trace look wrong.
+  const screen = useMemo(() => createDataScreen(360, 224, hue), [hue]);
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
+      {/* Casing. The screen used to be this box itself with the chart as its material, which
+       * painted the chart onto all six faces — the back of the monitor showed the graph too. */}
       <mesh position={[0, 0.32, 0]} castShadow>
         <boxGeometry args={[0.62, 0.4, 0.03]} />
+        <meshStandardMaterial color="#20242a" roughness={0.5} metalness={0.3} />
+      </mesh>
+      <mesh position={[0, 0.32, 0.017]}>
+        <planeGeometry args={[0.57, 0.355]} />
         <meshBasicMaterial map={screen} toneMapped={false} />
       </mesh>
       <mesh position={[0, 0.08, 0]}>
@@ -2473,7 +2561,7 @@ function MoleculeScene() {
       </mesh>
       <MonitorProp position={[WALL_X - 0.9, FLOOR_Y + 1.05, 1.3]} rotationY={-Math.PI * 0.15} hue="blue" />
       <Centrifuge position={[WALL_X - 0.95, FLOOR_Y + 1.05, 2.75]} rotationY={-0.5} />
-      <RoboticArm position={[WALL_X - 1.0, FLOOR_Y + 1.05, -0.6]} rotationY={-Math.PI * 0.45} scale={0.85} />
+      <RoboticArm position={[WALL_X - 1.0, FLOOR_Y + 1.05, 1.05]} rotationY={-Math.PI * 0.45} scale={0.85} />
 
       {/* Second bench run further back, so the room has depth rather than two islands */}
       <mesh position={[-WALL_X + 0.9, FLOOR_Y + 0.5, -6.6]} material={roomMaterials.cabinetMat} receiveShadow castShadow>
@@ -2823,6 +2911,13 @@ export default function Scene() {
       shadows={{ type: THREE.VSMShadowMap }}
       gl={{ antialias: true, powerPreference: "high-performance" }}
       camera={{ fov: 55, near: 0.1, far: 120, position: [0, 1.2, STATIONS.hero] }}
+      onCreated={({ scene }) => {
+        // Dev-only handle on the scene graph, used by the geometry audit script to walk every mesh
+        // and check what is sitting on the floor and what is hovering above it.
+        if (process.env.NODE_ENV !== "production") {
+          (window as unknown as { __journeyScene?: THREE.Scene }).__journeyScene = scene;
+        }
+      }}
     >
       <color attach="background" args={[PALETTE.fog]} />
       <fogExp2 attach="fog" args={[PALETTE.fog, 0.026]} />
@@ -2831,6 +2926,7 @@ export default function Scene() {
       <CameraRig />
       <TravelLight />
       <Starfield />
+      <HeroFoyer />
       <TransitGlow z={(STATIONS.hero + STATIONS.classroom) / 2} color={PALETTE.primary} />
       <TransitGlow z={(STATIONS.classroom + STATIONS.lab) / 2} color={PALETTE.leafBright} />
       <TransitGlow z={(STATIONS.lab + STATIONS.molecule) / 2} color={PALETTE.secondary} />
