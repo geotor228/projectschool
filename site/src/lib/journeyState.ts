@@ -342,35 +342,26 @@ export function chapterOpacity(
   return Math.min(fadeIn, fadeOut);
 }
 
-/** One narrow sub-window per tour stop (see `STOPS_PER_ROOM`/`TOURS`), centered on that stop's
- * actual `stopEase` hold point (k/(n-1) of the dwell) rather than on an unrelated equal-`n`-way
- * division of the whole dwell — those are NOT the same thing, and conflating them was a real bug:
- * with `n` holds spaced 1/(n-1) apart but the dwell naively cut into `n` equal 1/n-wide slices, a
- * card's slice and its camera's hold point drift apart more with every stop (by stop 5 of 6, the
- * hold sits at the very *edge* of an equal-slice division rather than its centre), so a card could
- * already be showing while the camera was still mid-flight between the *previous* stop and this
- * one — confirmed from a production screenshot where the last card of a room ("Осталось проверить
- * на практике") was on screen over a nonsensical, extremely-close view that turned out to be the
- * tail end of the camera still swinging in from the stop before it.
+/** Splits one station's dwell window into `n` equal, non-overlapping, back-to-back sub-windows —
+ * one per tour stop (see `STOPS_PER_ROOM`/`TOURS`). Only the odd-indexed ones (1, 3, 5) end up
+ * carrying a card; the even ones (0, 2, 4 — a wide establishing shot or a pure "look at this" beat)
+ * are passed to nothing, so no card ever renders there.
  *
- * Each window spans only the quarter-segment on either side of its hold point — the part of that
- * segment's smoothstep ease where velocity is already lowest, i.e. where the camera is genuinely
- * close to settled — clamped to the dwell's own [0,1] ends for the first and last stop. This also
- * happens to suit the "quick appear, quick disappear" the card redesign wants: a card is only ever
- * on screen for the actual hold, not the glide on either side of it. */
+ * This used to be centered tightly on each stop's actual `stopEase` hold point instead (a quarter of
+ * one inter-stop segment on either side) to fix a real misalignment bug — the camera's hold points
+ * are spaced 1/(n-1) apart, not the 1/n an equal split gives, so a card could start showing while the
+ * camera was still mid-flight in from the previous stop. That version was reverted: at only ~1/10th
+ * of a dwell wide, a normal fast mouse-wheel scroll could cross an entire card's window between two
+ * animation frames, so the text never rendered long enough to read at all — confirmed from a report
+ * that every card across the site had effectively stopped showing. A card being visible at all beats
+ * one that's timing-perfect but invisible; the plain equal split is back until a fix exists that
+ * doesn't trade reliability for precision. */
 export function splitIntoStops(
   { start, end }: { start: number; end: number },
   n: number,
 ): Array<readonly [number, number]> {
-  const width = end - start;
-  const segWidth = n > 1 ? 1 / (n - 1) : 1;
-  const quarter = segWidth / 4;
-  return Array.from({ length: n }, (_, k) => {
-    const hold = n > 1 ? k / (n - 1) : 0;
-    const lo = k === 0 ? 0 : hold - quarter;
-    const hi = k === n - 1 ? 1 : hold + quarter;
-    return [start + lo * width, start + hi * width] as const;
-  });
+  const width = (end - start) / n;
+  return Array.from({ length: n }, (_, i) => [start + i * width, start + (i + 1) * width] as const);
 }
 
 /** Opacity for one of a scene's cards: fades in over the first `edge` of its own range and out over
