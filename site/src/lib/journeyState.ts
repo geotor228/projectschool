@@ -245,8 +245,15 @@ const TOURS: Partial<Record<StationKey, CameraPose[]>> = {
     { pos: [3.0, 1.35, -54.5], look: [4.9, -0.3, -52.3] },
     // Stop 3 (card "Взрыв внутри пузырька"): the central island bench.
     { pos: [-1.1, 1.25, -54.7], look: [-1.9, 0.75, -58.3] },
-    // Stop 4 (view): the server racks and control consoles further back in the room.
-    { pos: [1.5, 1.6, -59], look: [4.5, -0.8, -60.5] },
+    // Stop 4 (view): the tube-storage cabinet on the left wall (world ≈ [-5.65, ·, -54.6]). Was the
+    // server racks at z≈-59/-61, ~4.5 units deeper than every neighbouring stop (stop 3 at -54.7,
+    // stop 5 at -55.5) — that big a dip-and-recover in Z is exactly what the spline through it (and
+    // the molecule model sitting right at z≈-57.9, close to the straight line between stop 4 and
+    // stop 5) turned into a stray close pass across the model's own atoms, confirmed from a
+    // production photo: two server racks tilted at an odd angle with a giant sphere and a bond
+    // cylinder looming in the foreground, from a point along the path no card was ever meant to
+    // linger at. The cabinet sits at almost the same depth as its neighbours instead.
+    { pos: [-3, 1.4, -56], look: [-5.5, -0.5, -54.8] },
     // Stop 5 (card "Осталось проверить на практике"): the molecule exhibit on its lit plinth (world
     // ≈ [2.45, ·, -57.9]) — the room's own centrepiece, and the last thing seen before the portal.
     { pos: [1.5, 1.3, -55.5], look: [2.3, 1.0, -57.5] },
