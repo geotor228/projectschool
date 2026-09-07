@@ -126,9 +126,13 @@ function CameraRig() {
     // rather than wall-clock time: a slow or throttled render loop would take far longer in real
     // seconds to converge than intended, since each call was credited with the same fixed 0.1s of
     // progress no matter how much time actually passed since the last one.
-    state.camera.position.x = THREE.MathUtils.damp(state.camera.position.x, targetX, 4, delta);
-    state.camera.position.y = THREE.MathUtils.damp(state.camera.position.y, targetY, 4, delta);
-    state.camera.position.z = THREE.MathUtils.damp(state.camera.position.z, targetZ, 6, delta);
+    // Lambdas pulled back from (4, 4, 6): a real drone has momentum and doesn't snap to position, and
+    // this — combined with a tour now holding briefly at each of 6 closer-together stops instead of
+    // 3 widely-spaced ones (see `stopEase` in journeyState.ts) — is what turns "jerky" into a slow,
+    // continuous glide.
+    state.camera.position.x = THREE.MathUtils.damp(state.camera.position.x, targetX, 3, delta);
+    state.camera.position.y = THREE.MathUtils.damp(state.camera.position.y, targetY, 3, delta);
+    state.camera.position.z = THREE.MathUtils.damp(state.camera.position.z, targetZ, 4.5, delta);
 
     // Look-ahead was 12 units, which meant that during the empty stretch between two stations'
     // set dressing, the camera was aimed at a point even further into that empty stretch than
@@ -136,8 +140,17 @@ function CameraRig() {
     // genuinely empty space. A shorter look-ahead keeps the aim point closer to what's actually
     // built out around the camera at any given moment. A tour overrides this with its own look
     // target (the point of interest that keyframe is actually about).
-    if (tourPose) target.set(tourPose.look[0], tourPose.look[1], tourPose.look[2]);
-    else target.set(sway * 0.5, 1, z - 5);
+    //
+    // The look target is damped too, not just snapped straight to its raw value every frame: a tour
+    // swinging from one waypoint's look direction to the next used to spin the camera's orientation
+    // instantly even though its *position* glided smoothly, which read as the position gliding but
+    // the view "snapping" — often more noticeable than a position pop, since the whole frame rotates.
+    const desiredLookX = tourPose ? tourPose.look[0] : sway * 0.5;
+    const desiredLookY = tourPose ? tourPose.look[1] : 1;
+    const desiredLookZ = tourPose ? tourPose.look[2] : z - 5;
+    target.x = THREE.MathUtils.damp(target.x, desiredLookX, 3, delta);
+    target.y = THREE.MathUtils.damp(target.y, desiredLookY, 3, delta);
+    target.z = THREE.MathUtils.damp(target.z, desiredLookZ, 3, delta);
     state.camera.lookAt(target);
   });
   return null;

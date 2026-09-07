@@ -92,11 +92,13 @@ export default function JourneyScroll({ children }: { children: React.ReactNode 
       trigger: spacerRef.current,
       start: "top top",
       end: "bottom bottom",
-      // Was 0.6 — a fixed ~0.6s lag between raw scroll position and the progress it drives, which
-      // barely registered across a whole 16%-wide dwell but was most of a narrow 5% transit's own
-      // width. Transits are no longer scroll-scrubbed at all (see runLockedJump above), but dwells
-      // still are, and a snappier scrub there is simply nicer to scroll through either way.
-      scrub: 0.2,
+      // Was 0.6, then 0.2 — a fixed lag between raw scroll position and the progress it drives.
+      // Transits are no longer scroll-scrubbed at all (see runLockedJump above), but dwells still
+      // are, and a little more lag than the snappiest possible setting takes the edge off scrolling
+      // in discrete mouse-wheel notches: each notch's jump in raw scroll position gets smoothed into
+      // the same continuous glide the camera tour itself now eases through (see `stopEase` in
+      // journeyState.ts), instead of the camera visibly hopping frame to frame with the wheel.
+      scrub: 0.35,
       onUpdate: (self) => {
         if (locked) return; // the locked tween owns progress right now; ignore stray scroll updates
         const p = self.progress;

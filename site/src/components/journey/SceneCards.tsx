@@ -1,6 +1,6 @@
 import SceneCard from "./SceneCard";
 import SourceTag from "./SourceTag";
-import { DWELL_WINDOW, splitIntoThirds } from "@/lib/journeyState";
+import { DWELL_WINDOW, STOPS_PER_ROOM, splitIntoStops } from "@/lib/journeyState";
 
 /**
  * The 3-card system replacing one long chapter block per "room" scene (classroom / lab / molecule
@@ -9,10 +9,20 @@ import { DWELL_WINDOW, splitIntoThirds } from "@/lib/journeyState";
  * this site's job now is a good first impression, not a committee reading. Every number, formula
  * and citation from the original text still exists, verbatim, in a card's `detail` panel behind
  * "Подробнее" — nothing here is a rewrite of the actual TDR, only of what a visitor sees first.
+ *
+ * Each room's dwell is split into 6 tour stops (see STOPS_PER_ROOM/TOURS in journeyState.ts); only
+ * the odd-indexed ones (1, 3, 5) carry a card — the even ones are wide/establishing or pure "look
+ * at this" beats with no text at all, so a card now reads as present-at-one-stop-then-gone rather
+ * than following the camera continuously across a third of the room's whole scroll range.
  */
 
+function useThreeCardStops(window: { start: number; end: number }) {
+  const stops = splitIntoStops(window, STOPS_PER_ROOM);
+  return [stops[1], stops[3], stops[5]] as const;
+}
+
 export function ClassroomCards() {
-  const [c1, c2, c3] = splitIntoThirds(DWELL_WINDOW.classroom);
+  const [c1, c2, c3] = useThreeCardStops(DWELL_WINDOW.classroom);
   return (
     <>
       <SceneCard range={c1} side="left" eyebrow="Часть I · Класс, где всё началось" title="Запах — это химия">
@@ -93,7 +103,7 @@ export function ClassroomCards() {
 }
 
 export function LabCards() {
-  const [c1, c2, c3] = splitIntoThirds(DWELL_WINDOW.lab);
+  const [c1, c2, c3] = useThreeCardStops(DWELL_WINDOW.lab);
   return (
     <>
       <SceneCard
@@ -212,7 +222,7 @@ export function LabCards() {
 }
 
 export function MoleculeCards() {
-  const [c1, c2, c3] = splitIntoThirds(DWELL_WINDOW.molecule);
+  const [c1, c2, c3] = useThreeCardStops(DWELL_WINDOW.molecule);
   return (
     <>
       <SceneCard

@@ -163,56 +163,92 @@ export function dwellInfoForProgress(p: number): { key: StationKey; local: numbe
 
 export type CameraPose = { pos: readonly [number, number, number]; look: readonly [number, number, number] };
 
+/** Every room tour has exactly this many waypoints: 3 "view" stops (no card — just something worth
+ * looking at) at even indices and 3 "text" stops (one card each, in dwell order) at odd indices.
+ * SceneCards.tsx picks indices 1/3/5 out of `splitIntoStops(window, STOPS_PER_ROOM)` to line a
+ * card's own visible range up with the exact stop its camera pose corresponds to below. */
+export const STOPS_PER_ROOM = 6;
+
 /**
- * Camera tours through the 3 "room" scenes — a real walk from one point of interest to the next
- * (a desk, a wall poster, the board; the bench, the ultrasonic bath, the wall chart; and so on)
- * instead of one fixed parked shot for the whole dwell. Coordinates are hand-placed against each
- * scene's actual geometry in Scene.tsx (see the position props there), converted to world space by
- * adding that scene's own group offset.
+ * Camera tours through the 3 "room" scenes: 6 waypoints each, alternating a wide/establishing or
+ * pure "look at this" beat (indices 0, 2, 4 — no card ever shows here) with a beat that carries one
+ * of the room's 3 cards (indices 1, 3, 5). Coordinates are hand-placed against each scene's actual
+ * geometry in Scene.tsx (see the position props there), converted to world space by adding that
+ * scene's own group offset.
  *
- * These no longer need to start and end pinned to a "neutral" pose. That constraint existed because
- * a transit used to be a scroll-scrubbed fade — the room dissolving into a translucent curtain — so
- * wherever a tour left the camera at the exact moment a dwell ended is what the curtain had to hide
- * *while still partly see-through*. Now a transit is a fixed-duration, fully opaque portal (see
- * JourneyScroll.tsx/JourneyCurtain.tsx): the screen is completely covered for its entire length, so
- * it no longer matters at all where a tour starts or ends — there is nothing to hand off smoothly
- * to. That's what frees the first waypoint to be a genuine pulled-back establishing shot instead of
- * the same forward-looking parked position every scene used to open on.
+ * Every one of these was checked against the room's actual geometry for viewing distance — the
+ * previous 3-point version put the classroom's board stop only ~2.2 units from a 7-unit-wide board
+ * (close enough that its own accent strip, a thin horizontal highlight, foreshortened into what
+ * read as a stray diagonal streak across the frame) and the lab's ultrasonic-bath stop only ~2.3
+ * units from a small box viewed at a steep downward tilt — both far too tight to read as anything
+ * but a confusing, disorienting close-up. Every stop here sits at least ~3.3 units from whatever
+ * it's framing, with a downward tilt kept under ~35° so the subject and its surroundings both stay
+ * legible.
  *
- * Waypoints are evenly spaced across the dwell and interpolated with a Catmull-Rom spline (see
- * `splinePoseAt`) rather than linear/smoothstep segment-by-segment — a per-segment ease means the
- * camera's velocity drops to zero *at every single waypoint* before picking back up, which is what
- * read as "stop, then a sudden lurch into motion" rather than one continuous flight. A spline keeps
- * velocity continuous through the interior points; the camera only truly settles at the very start
- * and end of the whole dwell.
+ * These don't need to start and end pinned to a "neutral" pose — that constraint existed only for
+ * the old scroll-scrubbed curtain, which the fully-opaque locked portal transition replaced (see
+ * JourneyScroll.tsx/JourneyCurtain.tsx): the screen is completely covered for the whole jump, so it
+ * no longer matters where a tour starts or ends.
+ *
+ * Waypoints are spaced through `stopEase` (below) rather than fed straight to the spline at a
+ * uniform rate: that reparametrization holds the camera's velocity at ~0 for a moment exactly at
+ * each of the 6 stops (so a stop actually reads as a brief pause to look, not a blur passing
+ * through) while keeping the *path* itself one continuous Catmull-Rom curve, so the glide between
+ * stops stays smooth rather than a series of dead-stop-then-lurch cuts.
  */
 const TOURS: Partial<Record<StationKey, CameraPose[]>> = {
   classroom: [
-    // Card 1 "Запах — это химия": pulled back and slightly raised — the whole room (desks, board,
-    // side walls) in frame, not just the front of it.
+    // Stop 0 (view): pulled back and slightly raised — the whole room (desks, board, side walls,
+    // corkboard) in frame at once, the establishing shot on arrival.
     { pos: [0, 1.7, -9.5], look: [0, 1.3, -17] },
-    // Card 2 "Один цветок, два способа": lean toward the wall poster/corkboard (world x≈6-7 side).
+    // Stop 1 (card "Запах — это химия"): a modest lean in over the desks, still wide.
+    { pos: [0.4, 1.55, -12], look: [0, 1.3, -16.5] },
+    // Stop 2 (view): a look down at a student desk's own clutter — books, a stray pencil.
+    { pos: [-1.3, 1.35, -13.5], look: [-1.3, 0.65, -15.6] },
+    // Stop 3 (card "Один цветок, два способа"): lean toward the wall poster/corkboard (world
+    // x≈6-7 side) — unchanged from before; this framing was never the problem.
     { pos: [1.7, 1.3, -15], look: [3.8, 1.4, -17.2] },
-    // Card 3 "Что всё решает": arrive close to the blackboard (world ≈ [0, 1.7, -20]).
-    { pos: [0, 1.25, -17.8], look: [0, 1.6, -19.8] },
+    // Stop 4 (view): the whole blackboard, clean and comfortably back from it (~5.5 units, not the
+    // ~2.2 that used to make its accent strip read as a stray diagonal line) — enough to actually
+    // read the lesson on it.
+    { pos: [0, 1.6, -14.5], look: [0, 1.7, -19.5] },
+    // Stop 5 (card "Что всё решает"): a little closer to the board (~4 units) for the closing beat,
+    // but never nose-to-nose with it.
+    { pos: [0, 1.5, -16], look: [0, 1.6, -19.5] },
   ],
   lab: [
-    // Card 1 "Два стакана, одна гипотеза": pulled back, the whole bench and both apparatus visible.
+    // Stop 0 (view): pulled back, the whole bench and both apparatus visible.
     { pos: [0, 1.7, -29.5], look: [0, 1.3, -37] },
-    // Card 2 "+114%": lean toward the ultrasonic bath (world ≈ [-2.3, -0.85, -33.6]) — aimed at its
-    // indicator panel height, not straight down at the floor.
-    { pos: [-1.6, 1.2, -34.2], look: [-2.1, 0.4, -33.9] },
-    // Card 3 "Но почему это вообще работает?": the terpene-structures wall chart specifically (world
-    // ≈ [-3.85, 0.45, -43.93]) — a named poster, not a blank patch of wall.
-    { pos: [-2, 1.3, -37], look: [-3.6, 0.9, -42] },
+    // Stop 1 (card "Два стакана, одна гипотеза"): both setups (the flask/condenser and the
+    // ultrasonic bath) framed together, since the card is explicitly about the two side by side.
+    { pos: [0.3, 1.5, -32], look: [0, 1.1, -35.3] },
+    // Stop 2 (view): the glassware rack — turned into a genuine "look at this" beat instead of an
+    // accidental close swing through it mid-transit.
+    { pos: [-2.2, 1.4, -30.5], look: [-4.72, -0.2, -32.2] },
+    // Stop 3 (card "+114%"): the ultrasonic bath, pulled back to ~4.4 units at a ~29° tilt — close
+    // enough to read its panel, far enough that it isn't a wall of dark plastic filling the frame.
+    { pos: [-0.5, 1.6, -31.5], look: [-2.3, -0.5, -34.9] },
+    // Stop 4 (view): the periodic table, dead-on and comfortably back (~5.5 units from the wall).
+    { pos: [-0.6, 1.6, -38.5], look: [-0.6, 1.5, -44] },
+    // Stop 5 (card "Но почему это вообще работает?"): the terpene-structures wall chart specifically
+    // (world ≈ [-3.85, 0.45, -43.93]) — bridges toward the molecule room next door.
+    { pos: [-2.5, 1.4, -39], look: [-3.85, 0.7, -43.9] },
   ],
   molecule: [
-    // Card 1 "Нос умнее, чем кажется": pulled back, the whole room visible.
+    // Stop 0 (view): pulled back, the whole room visible.
     { pos: [0, 1.7, -49.5], look: [0, 1.3, -57] },
-    // Card 2 "Взрыв внутри пузырька": lean toward the central island bench.
+    // Stop 1 (card "Нос умнее, чем кажется"): straight down the room's central aisle, monitors
+    // flanking either side — the card's text isn't about one specific prop, so this just keeps
+    // moving forward through the space rather than leaning at anything in particular.
+    { pos: [0, 1.6, -52], look: [0, 1.1, -58] },
+    // Stop 2 (view): the right-hand bench's centrifuge and robotic arm at work.
+    { pos: [3.0, 1.35, -54.5], look: [4.9, -0.3, -52.3] },
+    // Stop 3 (card "Взрыв внутри пузырька"): the central island bench.
     { pos: [-1.1, 1.25, -54.7], look: [-1.9, 0.75, -58.3] },
-    // Card 3 "Осталось проверить на практике": the molecule exhibit on its lit plinth (world ≈
-    // [2.45, ·, -57.9]) — the room's own centrepiece.
+    // Stop 4 (view): the server racks and control consoles further back in the room.
+    { pos: [1.5, 1.6, -59], look: [4.5, -0.8, -60.5] },
+    // Stop 5 (card "Осталось проверить на практике"): the molecule exhibit on its lit plinth (world
+    // ≈ [2.45, ·, -57.9]) — the room's own centrepiece, and the last thing seen before the portal.
     { pos: [1.5, 1.3, -55.5], look: [2.3, 1.0, -57.5] },
   ],
 };
@@ -248,13 +284,29 @@ function splinePoseAt(poses: CameraPose[], u: number): CameraPose {
   };
 }
 
+/** Reparametrizes global t∈[0,1] so the *spatial* spline (still one continuous Catmull-Rom curve —
+ * see `splineAt`) is sampled at a non-uniform rate: velocity eases to ~0 exactly at each of the `n`
+ * keyframes (t = i/(n-1)) via a per-segment smoothstep, then eases back up to glide to the next one.
+ * This is what turns each waypoint into an actual brief stop — long enough to read a card or take in
+ * a view — instead of a point the camera merely passes through at speed. Applying the ease to the
+ * *parametrization* rather than building it out of separate linear segments (the very first version
+ * of this tour system) keeps the path itself smooth throughout; only the pacing along it changes. */
+function stopEase(t: number, n: number): number {
+  if (n <= 1) return 0;
+  const segCount = n - 1;
+  const scaled = clamp01(t) * segCount;
+  const i = Math.min(Math.floor(scaled), segCount - 1);
+  const local = scaled - i;
+  return (i + smooth(local)) / segCount;
+}
+
 /** The camera pose for a station's tour at a given point through its dwell (0→1), or null for a
  * station with no tour defined (hero, horizon — deliberately untouched) so CameraRig can fall back
  * to the plain neutral formula it always used. */
 export function tourPoseAt(key: StationKey, dwellLocal: number): CameraPose | null {
   const poses = TOURS[key];
   if (!poses || poses.length === 0) return null;
-  return splinePoseAt(poses, clamp01(dwellLocal));
+  return splinePoseAt(poses, stopEase(clamp01(dwellLocal), poses.length));
 }
 
 /** Chapter ranges along the 0→1 journey, now simply each station's own dwell window — the card
@@ -283,28 +335,29 @@ export function chapterOpacity(
   return Math.min(fadeIn, fadeOut);
 }
 
-/** Splits one station's dwell window into 3 equal, non-overlapping sub-windows for the 3-card
- * system (intro / detail / bridge) a "room" scene shows in place of one long chapter card. */
-export function splitIntoThirds({ start, end }: { start: number; end: number }): [
-  readonly [number, number],
-  readonly [number, number],
-  readonly [number, number],
-] {
-  const third = (end - start) / 3;
-  return [
-    [start, start + third] as const,
-    [start + third, start + 2 * third] as const,
-    [start + 2 * third, end] as const,
-  ];
+/** Splits one station's dwell window into `n` equal, non-overlapping, back-to-back sub-windows —
+ * one per tour stop (see `STOPS_PER_ROOM`/`TOURS`). Only the odd-indexed ones (1, 3, 5) end up
+ * carrying a card; the even ones (0, 2, 4 — a wide establishing shot or a pure "look at this" beat)
+ * are passed to nothing, so no card ever renders there. */
+export function splitIntoStops(
+  { start, end }: { start: number; end: number },
+  n: number,
+): Array<readonly [number, number]> {
+  const width = (end - start) / n;
+  return Array.from({ length: n }, (_, i) => [start + i * width, start + (i + 1) * width] as const);
 }
 
-/** Opacity for one of the 3 per-scene cards: fades in over the first `edge` of its own range and
- * out over the last `edge`, but — unlike chapterOpacity — never reads outside [start,end] at all,
- * not even by `edge`. Three of these sit back to back with no gap, and the original bug this whole
- * redesign started from was two adjacent chapters both padding a fade past their shared boundary,
- * so both were partway visible at once and their text sat on top of each other; this is the fix for
- * that, applied at the level of every individual card rather than patched once at the top. */
-export function cardOpacity(progress: number, [start, end]: readonly [number, number], edge = 0.006): number {
+/** Opacity for one of a scene's cards: fades in over the first `edge` of its own range and out over
+ * the last `edge`, but — unlike chapterOpacity — never reads outside [start,end] at all, not even by
+ * `edge`. A card's range is now one narrow stop-slice (see `splitIntoStops`) rather than a full third
+ * of the dwell, and `edge` is kept small relative to that slice on purpose: the whole point of the
+ * "stops" redesign is that a card reads as present-then-gone at a specific point the camera pauses
+ * at, not a slow crossfade spread across most of the room's scroll range the way the original 3-card
+ * system had it (which is also where the original overlap bug came from — two adjacent ranges both
+ * padding a fade past their shared boundary, so their text sat on top of each other for a moment on
+ * every transition; keeping every card's own fade strictly inside its own range is what fixed that,
+ * and still does here). */
+export function cardOpacity(progress: number, [start, end]: readonly [number, number], edge = 0.003): number {
   if (progress <= start || progress >= end) return 0;
   const fadeIn = Math.min(1, (progress - start) / edge);
   const fadeOut = Math.min(1, (end - progress) / edge);

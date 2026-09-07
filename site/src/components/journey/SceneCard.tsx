@@ -20,10 +20,12 @@ const POSITION_CLASS: Record<Side, string> = {
  * exact figures, cited sources) behind a "Подробнее" expand, so nothing from the TDR itself is lost,
  * it just isn't what a first-time visitor reads by default.
  *
- * `range` is this card's own slice of progress, computed by splitIntoThirds so the three cards in
- * one scene never overlap in time — each fades fully out before the next fades in, which is the
- * actual fix for the original bug (two chapters both padding a fade past their shared boundary, so
- * their text sat on top of each other for a moment on every transition).
+ * `range` is this card's own slice of progress: one narrow tour-stop slot out of the room's 6 (see
+ * splitIntoStops/STOPS_PER_ROOM in journeyState.ts), so the three cards in one scene never overlap
+ * in time — each fades fully out before the next fades in, which is the actual fix for the original
+ * bug (two chapters both padding a fade past their shared boundary, so their text sat on top of each
+ * other for a moment on every transition) — and now reads as a genuine stop-and-read beat rather
+ * than following the camera across a whole third of the room's scroll range.
  */
 export default function SceneCard({
   range,
