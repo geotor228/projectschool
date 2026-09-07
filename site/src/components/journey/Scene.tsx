@@ -6,7 +6,7 @@ import { Environment, ContactShadows, Text, RoundedBox, Instances, Instance } fr
 import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
-import { journeyState } from "@/lib/journeyState";
+import { journeyState, STATIONS, cameraZForProgress, travelPhase } from "@/lib/journeyState";
 import {
   createWoodTexture,
   createParquetTexture,
@@ -22,14 +22,6 @@ import {
   createGlowSpriteTexture,
   createVignetteTexture,
 } from "@/lib/proceduralTextures";
-
-const STATIONS = {
-  hero: 6,
-  classroom: -14,
-  lab: -34,
-  molecule: -54,
-  horizon: -76,
-};
 
 /** Deterministic 0-1 pseudo-random value from two integers — a pure stand-in for Math.random()
  * inside useMemo, where calling an impure function during render trips react-hooks/purity. */
@@ -99,10 +91,16 @@ function CameraRig() {
   const target = useMemo(() => new THREE.Vector3(), []);
   useFrame((state) => {
     const p = journeyState.progress;
-    // Camera z travels from the hero station to the horizon station.
-    const z = THREE.MathUtils.lerp(STATIONS.hero, STATIONS.horizon, p);
-    const sway = Math.sin(p * Math.PI * 6) * 0.6;
-    const bob = Math.sin(p * Math.PI * 10) * 0.15;
+    // Parked through each station's dwell, moving only across the short transit between two
+    // neighbouring ones — see journeyState.ts for why this replaced a single continuous lerp.
+    const z = cameraZForProgress(p);
+    // Driven by travelPhase, not raw progress: it only advances during a transit and holds flat
+    // through every dwell, so the sway/bob freeze while parked instead of still drifting as if
+    // the camera were flying — a dwell's much wider scroll range made a full sway cycle read as
+    // seasick rather than lively.
+    const phase = travelPhase(p);
+    const sway = Math.sin(phase * Math.PI * 6) * 0.6;
+    const bob = Math.sin(phase * Math.PI * 10) * 0.15;
 
     state.camera.position.x = THREE.MathUtils.damp(state.camera.position.x, sway, 4, 0.1);
     state.camera.position.y = THREE.MathUtils.damp(state.camera.position.y, 1.2 + bob, 4, 0.1);
@@ -128,7 +126,7 @@ function CameraRig() {
 function useStationVisibility(ref: React.RefObject<THREE.Group | null>, stationZ: number, radius = 13.5) {
   useFrame(() => {
     if (!ref.current) return;
-    const cameraZ = THREE.MathUtils.lerp(STATIONS.hero, STATIONS.horizon, journeyState.progress);
+    const cameraZ = cameraZForProgress(journeyState.progress);
     ref.current.visible = Math.abs(cameraZ - stationZ) < radius;
   });
 }
@@ -152,7 +150,7 @@ function useStationDissolve(
   useFrame(() => {
     const group = ref.current;
     if (!group) return;
-    const cameraZ = THREE.MathUtils.lerp(STATIONS.hero, STATIONS.horizon, journeyState.progress);
+    const cameraZ = cameraZForProgress(journeyState.progress);
     // Positive while the camera is still short of the station, negative once it's past.
     const ahead = cameraZ - stationZ;
     const t =

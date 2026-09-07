@@ -5,6 +5,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ensureGsap } from "@/lib/gsap";
 import { setJourneyProgress } from "@/lib/journeyState";
 import Scene from "./Scene";
+import JourneyCurtain from "./JourneyCurtain";
 
 const JOURNEY_HEIGHT_VH = 600;
 
@@ -27,6 +28,7 @@ export default function JourneyScroll({ children }: { children: React.ReactNode 
     <div ref={spacerRef} style={{ height: `${JOURNEY_HEIGHT_VH}vh` }} className="relative">
       <div className="fixed inset-0 -z-10">
         <Scene />
+        <JourneyCurtain />
       </div>
       {children}
     </div>
