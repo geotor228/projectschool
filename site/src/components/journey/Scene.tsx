@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, ContactShadows, Text, RoundedBox, Instances, Instance } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
@@ -2812,6 +2812,19 @@ function HorizonScene() {
 
   // The forest photograph, loaded once. useLoader would suspend the whole Canvas, so this loads
   // imperatively and simply pops in when ready — the backdrop starts on its fallback colour.
+  // Placement differs by frame shape. The camera keeps its vertical field of view, so a portrait
+  // frame is far narrower in world units — at x 2.4 the bottle fell entirely outside a phone
+  // frame, with only the edge of its stone showing. Bringing it towards the centre then put it
+  // behind the closing card, which on a phone runs from a quarter to three quarters of the
+  // height. So on portrait the whole arrangement is set further back and lower, reading as a
+  // small object standing in the flowers below the card. Nothing here risks the camera: the
+  // scroll ends several units short of it.
+  const { size } = useThree();
+  const portrait = size.width / size.height < 1.1;
+  const set = portrait
+    ? { x: 1, z: -8, rockY: -3.3, rockScale: 0.85, bottleY: -2.35, bottleScale: 0.8, shadowY: -3.0 }
+    : { x: 2.4, z: -5, rockY: -1.42, rockScale: 1.35, bottleY: -0.44, bottleScale: 0.95, shadowY: -1.18 };
+
   const vignette = useMemo(() => createVignetteTexture(512), []);
   const forest = useMemo(() => {
     const tex = new THREE.TextureLoader().load("/textures/forest-bluebells-hero.jpg");
@@ -2887,13 +2900,13 @@ function HorizonScene() {
        * plane in front of it read as exactly what it was — a flat slab laid over the picture. The
        * boulder is instead set low enough that its base falls below the bottom of frame, so the
        * picture's own foreground reads as the ground it is bedded into. */}
-      <MossyRock position={[2.4, -1.42, -5]} scale={1.35} />
-      <group ref={groupRef} position={[2.4, -0.44, -5]} scale={0.95}>
+      <MossyRock position={[set.x, set.rockY, set.z]} scale={set.rockScale} />
+      <group ref={groupRef} position={[set.x, set.bottleY, set.z]} scale={set.bottleScale}>
         <PerfumeBottle />
         <ScentSwirl />
       </group>
       {/* Contact shadow tight under the bottle, grounding it on the stone */}
-      <ContactShadows position={[2.4, -1.18, -5]} opacity={0.45} scale={2.2} blur={1.8} far={1} resolution={512} color="#12160e" />
+      <ContactShadows position={[set.x, set.shadowY, set.z]} opacity={0.45} scale={2.2} blur={1.8} far={1} resolution={512} color="#12160e" />
 
       {/* Woodland light: warm sun raking in from the left, matching the sunburst in the photograph,
        * over a cool shade fill. Nothing bright enough to blow the glass out against the picture. */}
@@ -2903,9 +2916,23 @@ function HorizonScene() {
       <pointLight position={[1.2, 0.6, 1.6]} intensity={2.4} distance={5} decay={2} color="#cfd6ff" />
       {/* Rim light behind and above the bottle. Glass only reads where something bright sits behind
        * it to refract; without this the bottle is a hole in the plate no matter how the material
-       * is tuned. Tight distance so it lights the bottle and not the whole photograph. */}
-      <pointLight position={[3.3, 1.1, -6.6]} intensity={7} distance={4.5} decay={2} color="#fff3d8" />
-      <pointLight position={[1.5, 0.2, -4.2]} intensity={3} distance={3} decay={2} color="#ffd9a0" />
+       * is tuned. Tight distance so it lights the bottle and not the whole photograph. Positioned
+       * as offsets from the bottle rather than fixed points — on a phone the bottle moves, and
+       * lights left at the desktop coordinates left it sitting unlit in the dark. */}
+      <pointLight
+        position={[set.x + 0.9, set.bottleY + 1.5, set.z - 1.6]}
+        intensity={7}
+        distance={4.5}
+        decay={2}
+        color="#fff3d8"
+      />
+      <pointLight
+        position={[set.x - 0.9, set.bottleY + 0.64, set.z + 0.8]}
+        intensity={3}
+        distance={3}
+        decay={2}
+        color="#ffd9a0"
+      />
     </group>
   );
 }
