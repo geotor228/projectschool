@@ -342,10 +342,17 @@ export function chapterOpacity(
   return Math.min(fadeIn, fadeOut);
 }
 
-/** Splits one station's dwell window into `n` equal, non-overlapping, back-to-back sub-windows —
- * one per tour stop (see `STOPS_PER_ROOM`/`TOURS`). Only the odd-indexed ones (1, 3, 5) end up
- * carrying a card; the even ones (0, 2, 4 — a wide establishing shot or a pure "look at this" beat)
- * are passed to nothing, so no card ever renders there.
+/** Splits one station's dwell window into `n` non-overlapping, back-to-back sub-windows — one per
+ * tour stop (see `STOPS_PER_ROOM`/`TOURS`). Only the odd-indexed ones (1, 3, 5) end up carrying a
+ * card; the even ones (0, 2, 4 — a wide establishing shot or a pure "look at this" beat) are passed
+ * to nothing, so no card ever renders there.
+ *
+ * Odd (card) slices get 3x the width of even (view) ones rather than an equal 1-in-6 each: with a
+ * plain equal split, exactly half the dwell had no text on screen at all, and finding the other half
+ * felt like having to actively catch a moment rather than just reading as you go by. This still keeps
+ * every view-only beat (the whole point of adding them was rooms that are more than a caption slideshow),
+ * just narrower, so text is now the thing you're mostly scrolling through and a view is the brief
+ * beat in between rather than the other way around.
  *
  * This used to be centered tightly on each stop's actual `stopEase` hold point instead (a quarter of
  * one inter-stop segment on either side) to fix a real misalignment bug — the camera's hold points
@@ -354,14 +361,24 @@ export function chapterOpacity(
  * of a dwell wide, a normal fast mouse-wheel scroll could cross an entire card's window between two
  * animation frames, so the text never rendered long enough to read at all — confirmed from a report
  * that every card across the site had effectively stopped showing. A card being visible at all beats
- * one that's timing-perfect but invisible; the plain equal split is back until a fix exists that
- * doesn't trade reliability for precision. */
+ * one that's timing-perfect but invisible, so this only ever widens a card's own share, never narrows
+ * it below the plain equal split. */
 export function splitIntoStops(
   { start, end }: { start: number; end: number },
   n: number,
 ): Array<readonly [number, number]> {
-  const width = (end - start) / n;
-  return Array.from({ length: n }, (_, i) => [start + i * width, start + (i + 1) * width] as const);
+  const CARD_WEIGHT = 3;
+  const VIEW_WEIGHT = 1;
+  const weights = Array.from({ length: n }, (_, i) => (i % 2 === 1 ? CARD_WEIGHT : VIEW_WEIGHT));
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  const width = end - start;
+  let cursor = start;
+  return weights.map((w) => {
+    const sliceWidth = (w / totalWeight) * width;
+    const range = [cursor, cursor + sliceWidth] as const;
+    cursor += sliceWidth;
+    return range;
+  });
 }
 
 /** Opacity for one of a scene's cards: fades in over the first `edge` of its own range and out over
