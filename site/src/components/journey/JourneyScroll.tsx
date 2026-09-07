@@ -18,7 +18,11 @@ export default function JourneyScroll({ children }: { children: React.ReactNode 
       trigger: spacerRef.current,
       start: "top top",
       end: "bottom bottom",
-      scrub: 0.6,
+      // Was 0.6 — that's a fixed ~0.6s lag between raw scroll position and the progress this
+      // drives, which barely registers across a whole 16%-wide dwell but is most of a narrow 5%
+      // transit's own width. The camera cut would still be "arriving" a beat after the user had
+      // already scrolled past it, reading as the flash hanging rather than snapping through.
+      scrub: 0.2,
       onUpdate: (self) => setJourneyProgress(self.progress),
     });
     return () => trigger.kill();

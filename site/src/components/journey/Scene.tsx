@@ -6,7 +6,7 @@ import { Environment, ContactShadows, Text, RoundedBox, Instances, Instance } fr
 import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
-import { journeyState, STATIONS, cameraZForProgress, travelPhase } from "@/lib/journeyState";
+import { journeyState, STATIONS, cameraZForProgress, travelPhase, dwellInfoForProgress, tourPoseAt } from "@/lib/journeyState";
 import {
   createWoodTexture,
   createParquetTexture,
@@ -89,7 +89,7 @@ function TravelLight() {
 
 function CameraRig() {
   const target = useMemo(() => new THREE.Vector3(), []);
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const p = journeyState.progress;
     // Parked through each station's dwell, moving only across the short transit between two
     // neighbouring ones — see journeyState.ts for why this replaced a single continuous lerp.
@@ -102,16 +102,34 @@ function CameraRig() {
     const sway = Math.sin(phase * Math.PI * 6) * 0.6;
     const bob = Math.sin(phase * Math.PI * 10) * 0.15;
 
-    state.camera.position.x = THREE.MathUtils.damp(state.camera.position.x, sway, 4, 0.1);
-    state.camera.position.y = THREE.MathUtils.damp(state.camera.position.y, 1.2 + bob, 4, 0.1);
-    state.camera.position.z = THREE.MathUtils.damp(state.camera.position.z, z, 6, 0.1);
+    // Inside a dwell, a defined tour (classroom/lab/molecule) walks the camera between a few real
+    // points of interest instead of leaving it parked at one shot for the whole room — see the
+    // TOURS table in journeyState.ts. Stations with no tour (hero, horizon) fall back to exactly
+    // the plain neutral formula below, since dwellInfo/tourPose come back null for them.
+    const dwellInfo = dwellInfoForProgress(p);
+    const tourPose = dwellInfo ? tourPoseAt(dwellInfo.key, dwellInfo.local) : null;
+
+    const targetX = tourPose ? tourPose.pos[0] : sway;
+    const targetY = tourPose ? tourPose.pos[1] : 1.2 + bob;
+    const targetZ = tourPose ? tourPose.pos[2] : z;
+    // damp()'s 4th argument is elapsed time — it was hardcoded to a flat 0.1 here regardless of the
+    // frame's real delta, which happens to converge fine at a steady 60fps (where it overshoots the
+    // "correct" per-second rate a little) but ties the camera's actual settle time to frame rate
+    // rather than wall-clock time: a slow or throttled render loop would take far longer in real
+    // seconds to converge than intended, since each call was credited with the same fixed 0.1s of
+    // progress no matter how much time actually passed since the last one.
+    state.camera.position.x = THREE.MathUtils.damp(state.camera.position.x, targetX, 4, delta);
+    state.camera.position.y = THREE.MathUtils.damp(state.camera.position.y, targetY, 4, delta);
+    state.camera.position.z = THREE.MathUtils.damp(state.camera.position.z, targetZ, 6, delta);
 
     // Look-ahead was 12 units, which meant that during the empty stretch between two stations'
     // set dressing, the camera was aimed at a point even further into that empty stretch than
     // its own position — so no amount of light near the camera helped, the frame was centered on
     // genuinely empty space. A shorter look-ahead keeps the aim point closer to what's actually
-    // built out around the camera at any given moment.
-    target.set(sway * 0.5, 1, z - 5);
+    // built out around the camera at any given moment. A tour overrides this with its own look
+    // target (the point of interest that keyframe is actually about).
+    if (tourPose) target.set(tourPose.look[0], tourPose.look[1], tourPose.look[2]);
+    else target.set(sway * 0.5, 1, z - 5);
     state.camera.lookAt(target);
   });
   return null;
@@ -2942,11 +2960,13 @@ export default function Scene() {
       shadows={{ type: THREE.VSMShadowMap }}
       gl={{ antialias: true, powerPreference: "high-performance" }}
       camera={{ fov: 55, near: 0.1, far: 120, position: [0, 1.2, STATIONS.hero] }}
-      onCreated={({ scene }) => {
-        // Dev-only handle on the scene graph, used by the geometry audit script to walk every mesh
-        // and check what is sitting on the floor and what is hovering above it.
+      onCreated={({ scene, camera }) => {
+        // Dev-only handles used by test scripts: the scene graph (geometry audits) and the camera
+        // itself (verifying the per-station tour lands where journeyState.ts's TOURS table says).
         if (process.env.NODE_ENV !== "production") {
-          (window as unknown as { __journeyScene?: THREE.Scene }).__journeyScene = scene;
+          const w = window as unknown as { __journeyScene?: THREE.Scene; __journeyCamera?: THREE.Camera };
+          w.__journeyScene = scene;
+          w.__journeyCamera = camera;
         }
       }}
     >

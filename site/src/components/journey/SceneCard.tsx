@@ -73,7 +73,7 @@ export default function SceneCard({
     <div
       ref={ref}
       data-scene-card={title}
-      className={`pointer-events-none fixed z-20 flex w-[calc(100%-2rem)] max-w-sm flex-col gap-3 opacity-0 ${POSITION_CLASS[side]}`}
+      className={`pointer-events-none fixed z-20 flex w-[calc(100%-2rem)] max-w-md flex-col gap-3 opacity-0 ${POSITION_CLASS[side]}`}
     >
       <div
         className="rounded-2xl border p-5 backdrop-blur-md sm:p-6"
