@@ -16,6 +16,27 @@ export function setJourneyProgress(p: number) {
   listeners.forEach((fn) => fn(p));
 }
 
+/** True for the fixed duration of a station-to-station jump — see JourneyScroll.tsx, which is what
+ * actually flips this (and locks the page's own scroll) whenever progress crosses a transit
+ * boundary. Separate from `progress` itself: progress still advances smoothly underneath (driven by
+ * a fixed-duration tween instead of the scrollbar while this is true), but nothing that cares about
+ * *whether a jump is in flight* — right now, only the portal overlay — needs to also re-derive that
+ * from the progress segments math. */
+export const journeyTransitionState = { active: false };
+const transitionListeners = new Set<(active: boolean) => void>();
+export function subscribeTransitioning(fn: (active: boolean) => void): () => void {
+  transitionListeners.add(fn);
+  return () => transitionListeners.delete(fn);
+}
+export function setTransitioning(active: boolean) {
+  journeyTransitionState.active = active;
+  transitionListeners.forEach((fn) => fn(active));
+}
+
+/** Wall-clock length of the locked jump between two stations — fast, like a cut, never scroll-
+ * scrubbed. See JourneyScroll.tsx for how this is actually driven. */
+export const TRANSIT_DURATION_MS = 380;
+
 /** The journey's five stations, as world-Z camera positions. Scene.tsx imports this rather than
  * declaring its own copy — camera math here and scene-object placement there have to agree on the
  * same numbers, and they drifted apart once before when each side kept its own constant. */
@@ -66,6 +87,13 @@ function buildSegments(): Segment[] {
 
 const SEGMENTS = buildSegments();
 const TOTAL_TRANSIT = TRANSIT * (STATION_ORDER.length - 1);
+
+/** The 4 transit windows as plain [start,end] ranges — JourneyScroll.tsx reads this to notice when
+ * scroll-driven progress is about to cross into one, so it can take over with a fixed-duration
+ * locked jump instead of letting the scrollbar scrub through it. */
+export const TRANSIT_RANGES: readonly (readonly [number, number])[] = SEGMENTS.filter(
+  (s): s is TransitSegment => s.kind === "transit",
+).map((s) => [s.start, s.end] as const);
 
 /** Convenience lookup: each station's own dwell window, keyed by name — this is what the card
  * system and CHAPTERS below place content within. */
@@ -134,9 +162,6 @@ export function dwellInfoForProgress(p: number): { key: StationKey; local: numbe
 }
 
 export type CameraPose = { pos: readonly [number, number, number]; look: readonly [number, number, number] };
-type TourKeyframe = { at: number; pose: CameraPose };
-
-const neutralPose = (stationZ: number): CameraPose => ({ pos: [0, 1.2, stationZ], look: [0, 1, stationZ - 5] });
 
 /**
  * Camera tours through the 3 "room" scenes — a real walk from one point of interest to the next
@@ -145,100 +170,91 @@ const neutralPose = (stationZ: number): CameraPose => ({ pos: [0, 1.2, stationZ]
  * scene's actual geometry in Scene.tsx (see the position props there), converted to world space by
  * adding that scene's own group offset.
  *
- * Every tour's first and last keyframe (at 0 and at 1) is exactly neutralPose(STATIONS[key]) — the
- * same position and look-target cameraZForProgress/CameraRig already hand off to and expect back at
- * a transit boundary. That's not a stylistic choice, it's the thing that makes this safe to add at
- * all: a transit always lerps from/to STATIONS[from]/STATIONS[to] with the plain forward look, so if
- * a tour left the camera anywhere else at the exact moment a dwell ends, the next frame (now inside
- * the transit) would snap back to that neutral pose — a visible pop, right as the curtain is only
- * just starting to cover the screen. Only the interior keyframes are free to wander toward whatever
- * that scene's card is actually about; the walk always eases back to neutral by the time it hands
- * off. `at` values sit close to each card's own midpoint (see splitIntoThirds) but don't have to
- * match it exactly — the camera's arrival and the card's own fade are two independent systems that
- * only need to roughly agree, not lock-step.
+ * These no longer need to start and end pinned to a "neutral" pose. That constraint existed because
+ * a transit used to be a scroll-scrubbed fade — the room dissolving into a translucent curtain — so
+ * wherever a tour left the camera at the exact moment a dwell ended is what the curtain had to hide
+ * *while still partly see-through*. Now a transit is a fixed-duration, fully opaque portal (see
+ * JourneyScroll.tsx/JourneyCurtain.tsx): the screen is completely covered for its entire length, so
+ * it no longer matters at all where a tour starts or ends — there is nothing to hand off smoothly
+ * to. That's what frees the first waypoint to be a genuine pulled-back establishing shot instead of
+ * the same forward-looking parked position every scene used to open on.
+ *
+ * Waypoints are evenly spaced across the dwell and interpolated with a Catmull-Rom spline (see
+ * `splinePoseAt`) rather than linear/smoothstep segment-by-segment — a per-segment ease means the
+ * camera's velocity drops to zero *at every single waypoint* before picking back up, which is what
+ * read as "stop, then a sudden lurch into motion" rather than one continuous flight. A spline keeps
+ * velocity continuous through the interior points; the camera only truly settles at the very start
+ * and end of the whole dwell.
  */
-const TOURS: Partial<Record<StationKey, TourKeyframe[]>> = {
+const TOURS: Partial<Record<StationKey, CameraPose[]>> = {
   classroom: [
-    { at: 0, pose: neutralPose(STATIONS.classroom) },
-    // Card 1 "Запах — это химия": the desks are already what the neutral forward view frames.
-    { at: 0.16, pose: neutralPose(STATIONS.classroom) },
-    // Card 2 "Один цветок, два способа": lean toward the wall poster (world ≈ [6.85, 1.6, -17.4]) —
-    // a partial turn, not a snap to face it dead-on.
-    { at: 0.5, pose: { pos: [1.6, 1.3, -15], look: [3.6, 1.4, -17] } },
-    // Card 3 "Что всё решает": creep toward the blackboard (world ≈ [0, 1.7, -20]).
-    { at: 0.82, pose: { pos: [0, 1.25, -15.8], look: [0, 1.6, -19.5] } },
-    { at: 1, pose: neutralPose(STATIONS.classroom) },
+    // Card 1 "Запах — это химия": pulled back and slightly raised — the whole room (desks, board,
+    // side walls) in frame, not just the front of it.
+    { pos: [0, 1.7, -9.5], look: [0, 1.3, -17] },
+    // Card 2 "Один цветок, два способа": lean toward the wall poster/corkboard (world x≈6-7 side).
+    { pos: [1.7, 1.3, -15], look: [3.8, 1.4, -17.2] },
+    // Card 3 "Что всё решает": arrive close to the blackboard (world ≈ [0, 1.7, -20]).
+    { pos: [0, 1.25, -17.8], look: [0, 1.6, -19.8] },
   ],
   lab: [
-    { at: 0, pose: neutralPose(STATIONS.lab) },
-    // Card 1 "Два стакана, одна гипотеза": the whole bench, neutral forward view.
-    { at: 0.16, pose: neutralPose(STATIONS.lab) },
-    // Card 2 "+114%": lean toward the ultrasonic bath (world ≈ [-2.3, -0.85, -33.6]).
-    { at: 0.5, pose: { pos: [-1.3, 1.25, -34.6], look: [-1.9, 0.9, -34] } },
-    // Card 3 "Но почему это вообще работает?": glance up at the wall charts behind the bench.
-    { at: 0.82, pose: { pos: [0, 1.25, -35.5], look: [-0.5, 1.4, -40] } },
-    { at: 1, pose: neutralPose(STATIONS.lab) },
+    // Card 1 "Два стакана, одна гипотеза": pulled back, the whole bench and both apparatus visible.
+    { pos: [0, 1.7, -29.5], look: [0, 1.3, -37] },
+    // Card 2 "+114%": lean toward the ultrasonic bath (world ≈ [-2.3, -0.85, -33.6]) — aimed at its
+    // indicator panel height, not straight down at the floor.
+    { pos: [-1.6, 1.2, -34.2], look: [-2.1, 0.4, -33.9] },
+    // Card 3 "Но почему это вообще работает?": the terpene-structures wall chart specifically (world
+    // ≈ [-3.85, 0.45, -43.93]) — a named poster, not a blank patch of wall.
+    { pos: [-2, 1.3, -37], look: [-3.6, 0.9, -42] },
   ],
   molecule: [
-    { at: 0, pose: neutralPose(STATIONS.molecule) },
-    // Card 1 "Нос умнее, чем кажется": the room's neutral overview.
-    { at: 0.16, pose: neutralPose(STATIONS.molecule) },
-    // Card 2 "Взрыв внутри пузырька": lean toward the central island bench (world ≈ [-0.4,·,-59.6]).
-    { at: 0.5, pose: { pos: [-0.9, 1.25, -54.6], look: [-1.6, 0.7, -58] } },
-    // Card 3 "Осталось проверить на практике": the molecule exhibit itself (world ≈ [2.45,·,-57.9]).
-    { at: 0.82, pose: { pos: [1.3, 1.25, -55.2], look: [1.9, 0.7, -57.2] } },
-    { at: 1, pose: neutralPose(STATIONS.molecule) },
+    // Card 1 "Нос умнее, чем кажется": pulled back, the whole room visible.
+    { pos: [0, 1.7, -49.5], look: [0, 1.3, -57] },
+    // Card 2 "Взрыв внутри пузырька": lean toward the central island bench.
+    { pos: [-1.1, 1.25, -54.7], look: [-1.9, 0.75, -58.3] },
+    // Card 3 "Осталось проверить на практике": the molecule exhibit on its lit plinth (world ≈
+    // [2.45, ·, -57.9]) — the room's own centrepiece.
+    { pos: [1.5, 1.3, -55.5], look: [2.3, 1.0, -57.5] },
   ],
 };
 
-function lerpPose(a: CameraPose, b: CameraPose, t: number): CameraPose {
-  const st = smooth(t);
-  const l3 = (p: readonly [number, number, number], q: readonly [number, number, number]): [number, number, number] => [
-    lerp(p[0], q[0], st),
-    lerp(p[1], q[1], st),
-    lerp(p[2], q[2], st),
-  ];
-  return { pos: l3(a.pos, b.pos), look: l3(a.look, b.look) };
+// Catmull-Rom through 4 scalars at local t∈[0,1] — standard form, unit tension.
+function catmullRom(p0: number, p1: number, p2: number, p3: number, t: number): number {
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+}
+
+// Samples a Catmull-Rom spline through `points` at global u∈[0,1]. Endpoints are clamped (the first
+// and last point are effectively repeated), which has the pleasant side effect of easing velocity
+// toward zero at the very start/end of the path without needing an explicit matching keyframe there.
+function splineAt(points: number[], u: number): number {
+  const n = points.length;
+  if (n === 0) return 0;
+  if (n === 1) return points[0];
+  if (n === 2) return lerp(points[0], points[1], clamp01(u));
+  const segCount = n - 1;
+  const scaled = clamp01(u) * segCount;
+  const i = Math.min(Math.floor(scaled), segCount - 1);
+  const t = scaled - i;
+  const at = (idx: number) => points[Math.max(0, Math.min(n - 1, idx))];
+  return catmullRom(at(i - 1), at(i), at(i + 1), at(i + 2), t);
+}
+
+function splinePoseAt(poses: CameraPose[], u: number): CameraPose {
+  const channel = (pick: (p: CameraPose) => readonly number[], idx: number) => splineAt(poses.map((p) => pick(p)[idx]), u);
+  return {
+    pos: [channel((p) => p.pos, 0), channel((p) => p.pos, 1), channel((p) => p.pos, 2)],
+    look: [channel((p) => p.look, 0), channel((p) => p.look, 1), channel((p) => p.look, 2)],
+  };
 }
 
 /** The camera pose for a station's tour at a given point through its dwell (0→1), or null for a
  * station with no tour defined (hero, horizon — deliberately untouched) so CameraRig can fall back
  * to the plain neutral formula it always used. */
 export function tourPoseAt(key: StationKey, dwellLocal: number): CameraPose | null {
-  const kfs = TOURS[key];
-  if (!kfs || kfs.length === 0) return null;
-  const t = clamp01(dwellLocal);
-  for (let i = 0; i < kfs.length - 1; i++) {
-    if (t <= kfs[i + 1].at || i === kfs.length - 2) {
-      const span = kfs[i + 1].at - kfs[i].at;
-      const localT = span === 0 ? 1 : clamp01((t - kfs[i].at) / span);
-      return lerpPose(kfs[i].pose, kfs[i + 1].pose, localT);
-    }
-  }
-  return kfs[kfs.length - 1].pose;
-}
-
-/** Opacity for a full-screen curtain that covers the scene during a transit and clears during a
- * dwell, with a short soft edge so it fades rather than snaps. The camera still physically crosses
- * the same stretch of geometry it always did between two stations (a room's own back wall included)
- * — compressing that crossing into a short slice of scroll makes it quick, but doesn't guarantee a
- * slow, deliberate scroll (a dragged scrollbar, a hesitant trackpad) can't still linger inside it
- * and show the clipping. The curtain is what actually guarantees that moment is never seen.
- *
- * `edge` is deliberately tight: an earlier, wider edge combined with the scroll's own smoothing lag
- * (see JourneyScroll's scrub) made the curtain feel like it hung around rather than snapping through
- * — "stuck in the flash". A short edge means most of the already-narrow transit is spent fully
- * opaque rather than fading, so the cut reads as quick regardless of how that lag behaves. */
-export function transitCurtainOpacity(p: number, edge = 0.006): number {
-  const cp = clamp01(p);
-  let maxOpacity = 0;
-  for (const seg of SEGMENTS) {
-    if (seg.kind !== "transit") continue;
-    const fadeIn = clamp01((cp - (seg.start - edge)) / (2 * edge));
-    const fadeOut = clamp01((seg.end + edge - cp) / (2 * edge));
-    maxOpacity = Math.max(maxOpacity, Math.min(fadeIn, fadeOut));
-  }
-  return maxOpacity;
+  const poses = TOURS[key];
+  if (!poses || poses.length === 0) return null;
+  return splinePoseAt(poses, clamp01(dwellLocal));
 }
 
 /** Chapter ranges along the 0→1 journey, now simply each station's own dwell window — the card

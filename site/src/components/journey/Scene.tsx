@@ -6,7 +6,15 @@ import { Environment, ContactShadows, Text, RoundedBox, Instances, Instance } fr
 import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import * as THREE from "three";
-import { journeyState, STATIONS, cameraZForProgress, travelPhase, dwellInfoForProgress, tourPoseAt } from "@/lib/journeyState";
+import {
+  journeyState,
+  STATIONS,
+  cameraZForProgress,
+  travelPhase,
+  dwellInfoForProgress,
+  tourPoseAt,
+  setJourneyProgress,
+} from "@/lib/journeyState";
 import {
   createWoodTexture,
   createParquetTexture,
@@ -2964,9 +2972,20 @@ export default function Scene() {
         // Dev-only handles used by test scripts: the scene graph (geometry audits) and the camera
         // itself (verifying the per-station tour lands where journeyState.ts's TOURS table says).
         if (process.env.NODE_ENV !== "production") {
-          const w = window as unknown as { __journeyScene?: THREE.Scene; __journeyCamera?: THREE.Camera };
+          const w = window as unknown as {
+            __journeyScene?: THREE.Scene;
+            __journeyCamera?: THREE.Camera;
+            __setJourneyProgress?: (p: number) => void;
+          };
           w.__journeyScene = scene;
           w.__journeyCamera = camera;
+          // Drives progress directly, bypassing GSAP/ScrollTrigger and the transit-lock mechanism
+          // entirely — for testing the tour/spline math in isolation from scroll simulation, which
+          // a single one-shot window.scrollTo() can't exercise correctly across more than one
+          // transit (real continuous scrolling re-triggers onUpdate repeatedly as it goes, which is
+          // what actually cascades a jump across several transits in one gesture; a single
+          // programmatic scrollTo does not, so it only ever resolves the first one it crosses).
+          w.__setJourneyProgress = setJourneyProgress;
         }
       }}
     >

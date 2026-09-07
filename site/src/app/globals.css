@@ -51,6 +51,36 @@ h1, h2, h3, .font-display {
   color: var(--color-on-accent);
 }
 
+/* The portal transition between stations — see JourneyCurtain.tsx. Duration (380ms) is a plain
+ * literal here rather than a shared CSS variable fed from JourneyScroll's TRANSIT_DURATION_MS: the
+ * lock itself is timed in JS regardless of what this animation does, so keeping this in lockstep is
+ * a matter of updating both places together if it ever changes, not a hard technical coupling. */
+@keyframes portal-cover {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes portal-ring-scale {
+  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
+  16% { opacity: 1; }
+  55% { transform: translate(-50%, -50%) scale(1.7); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(3.4); opacity: 0; }
+}
+@keyframes portal-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+.portal-active .portal-cover {
+  animation: portal-cover 380ms ease-in-out forwards;
+}
+.portal-active .portal-ring {
+  animation: portal-ring-scale 380ms ease-in-out forwards;
+}
+.portal-active .portal-swirl {
+  animation: portal-spin 900ms linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
