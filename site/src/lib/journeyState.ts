@@ -335,16 +335,35 @@ export function chapterOpacity(
   return Math.min(fadeIn, fadeOut);
 }
 
-/** Splits one station's dwell window into `n` equal, non-overlapping, back-to-back sub-windows —
- * one per tour stop (see `STOPS_PER_ROOM`/`TOURS`). Only the odd-indexed ones (1, 3, 5) end up
- * carrying a card; the even ones (0, 2, 4 — a wide establishing shot or a pure "look at this" beat)
- * are passed to nothing, so no card ever renders there. */
+/** One narrow sub-window per tour stop (see `STOPS_PER_ROOM`/`TOURS`), centered on that stop's
+ * actual `stopEase` hold point (k/(n-1) of the dwell) rather than on an unrelated equal-`n`-way
+ * division of the whole dwell — those are NOT the same thing, and conflating them was a real bug:
+ * with `n` holds spaced 1/(n-1) apart but the dwell naively cut into `n` equal 1/n-wide slices, a
+ * card's slice and its camera's hold point drift apart more with every stop (by stop 5 of 6, the
+ * hold sits at the very *edge* of an equal-slice division rather than its centre), so a card could
+ * already be showing while the camera was still mid-flight between the *previous* stop and this
+ * one — confirmed from a production screenshot where the last card of a room ("Осталось проверить
+ * на практике") was on screen over a nonsensical, extremely-close view that turned out to be the
+ * tail end of the camera still swinging in from the stop before it.
+ *
+ * Each window spans only the quarter-segment on either side of its hold point — the part of that
+ * segment's smoothstep ease where velocity is already lowest, i.e. where the camera is genuinely
+ * close to settled — clamped to the dwell's own [0,1] ends for the first and last stop. This also
+ * happens to suit the "quick appear, quick disappear" the card redesign wants: a card is only ever
+ * on screen for the actual hold, not the glide on either side of it. */
 export function splitIntoStops(
   { start, end }: { start: number; end: number },
   n: number,
 ): Array<readonly [number, number]> {
-  const width = (end - start) / n;
-  return Array.from({ length: n }, (_, i) => [start + i * width, start + (i + 1) * width] as const);
+  const width = end - start;
+  const segWidth = n > 1 ? 1 / (n - 1) : 1;
+  const quarter = segWidth / 4;
+  return Array.from({ length: n }, (_, k) => {
+    const hold = n > 1 ? k / (n - 1) : 0;
+    const lo = k === 0 ? 0 : hold - quarter;
+    const hi = k === n - 1 ? 1 : hold + quarter;
+    return [start + lo * width, start + hi * width] as const;
+  });
 }
 
 /** Opacity for one of a scene's cards: fades in over the first `edge` of its own range and out over
