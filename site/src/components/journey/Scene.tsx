@@ -405,38 +405,66 @@ function LightBeam({
 /** One desk + chair pair: tabletop on four legs, a seat and backrest behind it.
  * Materials are shared instances passed in from ClassroomScene (see the ui-ux-pro-max
  * threejs guideline on sharing materials instead of allocating one per mesh). */
+/** Every cylindrical leg/brace on a student desk+chair, in desk-local space — pulled out of `Desk`
+ * itself so all of them (6 desks × 9 parts = 54) can be drawn through one shared `<Instances>` block
+ * instead of 54 separate meshes; see `buildDeskLegInstances` below, which turns these plus each
+ * desk's own position/yaw into world-space instance transforms for a single unit cylinder. `tiltZ`
+ * is the one non-vertical part (the cross-brace) baked in as a fixed local rotation. */
+const DESK_LEG_PARTS: { x: number; y: number; z: number; radius: number; height: number; tiltZ: number }[] = [
+  { x: -0.55, y: 0.37, z: -0.32, radius: 0.03, height: 0.74, tiltZ: 0 },
+  { x: 0.55, y: 0.37, z: -0.32, radius: 0.03, height: 0.74, tiltZ: 0 },
+  { x: -0.55, y: 0.37, z: 0.32, radius: 0.03, height: 0.74, tiltZ: 0 },
+  { x: 0.55, y: 0.37, z: 0.32, radius: 0.03, height: 0.74, tiltZ: 0 },
+  { x: 0, y: 0.16, z: -0.32, radius: 0.018, height: 1.1, tiltZ: Math.PI / 2 },
+  { x: -0.24, y: 0.2, z: 0.6, radius: 0.022, height: 0.4, tiltZ: 0 },
+  { x: 0.24, y: 0.2, z: 0.6, radius: 0.022, height: 0.4, tiltZ: 0 },
+  { x: -0.22, y: 0.31, z: 0.86, radius: 0.022, height: 0.62, tiltZ: 0 },
+  { x: 0.22, y: 0.31, z: 0.86, radius: 0.022, height: 0.62, tiltZ: 0 },
+];
+
+type InstanceTransform = { position: THREE.Vector3Tuple; rotation: THREE.Vector3Tuple; scale: THREE.Vector3Tuple };
+
+/** World-space (classroom-local) instance transforms for every desk's leg/brace cylinders, built
+ * from `DESK_LEG_PARTS` plus each desk's own jittered position/yaw. All parts share one unit
+ * cylinder geometry (radius 1, height 1) scaled per instance to its real radius/height — a cylinder
+ * standing vertically looks identical at any yaw, so the desk's own rotation only needs to be
+ * applied where a part isn't vertical (the cross-brace) and to correctly rotate each part's *offset*
+ * around the desk's centre (the position math below), not to every part's own orientation. */
+function buildDeskLegInstances(desks: { x: number; z: number; rotationY: number }[]): InstanceTransform[] {
+  const out: InstanceTransform[] = [];
+  for (const d of desks) {
+    const cos = Math.cos(d.rotationY);
+    const sin = Math.sin(d.rotationY);
+    for (const part of DESK_LEG_PARTS) {
+      const wx = d.x + part.x * cos + part.z * sin;
+      const wz = d.z - part.x * sin + part.z * cos;
+      out.push({
+        position: [wx, part.y, wz],
+        rotation: [0, d.rotationY, part.tiltZ],
+        scale: [part.radius, part.height, part.radius],
+      });
+    }
+  }
+  return out;
+}
+
 function Desk({
   position,
   rotationY = 0,
   woodMat,
-  metalMat,
   chairMat,
 }: {
   position: THREE.Vector3Tuple;
   rotationY?: number;
   woodMat: THREE.Material;
-  metalMat: THREE.Material;
   chairMat: THREE.Material;
 }) {
-  const legPositions: THREE.Vector3Tuple[] = [
-    [-0.55, 0, -0.32],
-    [0.55, 0, -0.32],
-    [-0.55, 0, 0.32],
-    [0.55, 0, 0.32],
-  ];
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
       {/* Tabletop — a real eased edge instead of a razor-sharp CG box corner */}
       <RoundedBox args={[1.3, 0.06, 0.75]} radius={0.015} smoothness={2} position={[0, 0.75, 0]} material={woodMat} castShadow receiveShadow />
-      {legPositions.map((lp, i) => (
-        <mesh key={i} position={[lp[0], 0.37, lp[2]]} material={metalMat}>
-          <cylinderGeometry args={[0.03, 0.03, 0.74, 8]} />
-        </mesh>
-      ))}
-      {/* Cross-brace between the front legs — real desks aren't four unconnected sticks */}
-      <mesh position={[0, 0.16, -0.32]} rotation={[0, 0, Math.PI / 2]} material={metalMat}>
-        <cylinderGeometry args={[0.018, 0.018, 1.1, 8]} />
-      </mesh>
+      {/* Legs, cross-brace and chair legs are drawn via the shared cylinder Instances block in
+       * ClassroomScene (see buildDeskLegInstances) rather than as meshes here. */}
 
       {/* Chair, offset behind the desk — its own olive plastic-shell material, not the desk's wood.
        * A shallow molded dish for the seat and a gently reclined, two-segment back read as a real
@@ -446,16 +474,6 @@ function Desk({
       </mesh>
       <RoundedBox args={[0.55, 0.42, 0.055]} radius={0.03} smoothness={2} position={[0, 0.62, 0.87]} rotation={[-0.22, 0, 0]} material={chairMat} castShadow />
       <RoundedBox args={[0.5, 0.28, 0.05]} radius={0.03} smoothness={2} position={[0, 0.93, 0.79]} rotation={[-0.36, 0, 0]} material={chairMat} castShadow />
-      {[
-        [-0.24, 0.2, 0.6],
-        [0.24, 0.2, 0.6],
-        [-0.22, 0.31, 0.86],
-        [0.22, 0.31, 0.86],
-      ].map((p, i) => (
-        <mesh key={i} position={p as THREE.Vector3Tuple} material={metalMat}>
-          <cylinderGeometry args={[0.022, 0.022, i < 2 ? 0.4 : 0.62, 6]} />
-        </mesh>
-      ))}
     </group>
   );
 }
@@ -639,6 +657,61 @@ function PottedPlant({ position, scale = 1 }: { position: THREE.Vector3Tuple; sc
   );
 }
 
+/** Every potted plant's 9 leaves share this exact pattern — the original `PottedPlant` component's
+ * own `leaves` useMemo used the same fixed seeds (200-203) regardless of which plant instance it
+ * was, so every plant already looked identical apart from position/scale; pulling the pattern out
+ * to a constant just makes that explicit instead of recomputing the same 9 values once per plant. */
+const PLANT_LEAF_PATTERN = Array.from({ length: 9 }, (_, i) => ({
+  angle: (i / 9) * Math.PI * 2 + seededJitter(i, 200) * 0.6,
+  tilt: 0.5 + seededJitter(i, 201) * 0.45,
+  s: 0.7 + seededJitter(i, 202) * 0.45,
+  deep: seededJitter(i, 203) > 0.45,
+}));
+
+/** World-space (room-local) leaf instance transforms for a set of potted plants, split by colour
+ * (leafDeep/leafBright) so each colour can be drawn through its own shared `<Instances>` block —
+ * e.g. the classroom's 3 plants × 9 leaves collapses from 27 meshes into 2 draw calls. */
+function buildPlantLeafInstances(
+  plants: { position: THREE.Vector3Tuple; scale: number }[],
+): { deep: InstanceTransform[]; bright: InstanceTransform[] } {
+  const deep: InstanceTransform[] = [];
+  const bright: InstanceTransform[] = [];
+  for (const plant of plants) {
+    const [px, py, pz] = plant.position;
+    for (const leaf of PLANT_LEAF_PATTERN) {
+      const entry: InstanceTransform = {
+        position: [px, py + 0.46 * plant.scale, pz],
+        rotation: [leaf.tilt, leaf.angle, 0],
+        scale: [leaf.s * plant.scale, leaf.s * plant.scale, leaf.s * plant.scale],
+      };
+      (leaf.deep ? deep : bright).push(entry);
+    }
+  }
+  return { deep, bright };
+}
+
+/** Just a potted plant's pot (body + rim + soil), no leaves — used where the leaves are instead
+ * drawn through a shared `<Instances>` block (see buildPlantLeafInstances) alongside other plants
+ * in the same room. */
+function PlantPot({ position, scale = 1 }: { position: THREE.Vector3Tuple; scale?: number }) {
+  return (
+    <group position={position} scale={scale}>
+      <mesh position={[0, 0.22, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.24, 0.19, 0.44, 16]} />
+        <meshStandardMaterial color={PALETTE.terracotta} roughness={0.85} />
+      </mesh>
+      <mesh position={[0, 0.445, 0]}>
+        <cylinderGeometry args={[0.25, 0.25, 0.05, 16]} />
+        <meshStandardMaterial color="#5c3122" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.47, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.22, 16]} />
+        <meshStandardMaterial color="#1c140d" roughness={1} />
+      </mesh>
+    </group>
+  );
+}
+
 function ClassroomScene() {
   const groupRef = useRef<THREE.Group>(null);
   // Fades in a little earlier than the default so the room is already materialising out of the
@@ -742,7 +815,44 @@ function ClassroomScene() {
     ceilingTiles.anisotropy = 8;
     const ceilingMat = new THREE.MeshStandardMaterial({ map: ceilingTiles, roughness: 0.95 });
     const trimMat = new THREE.MeshStandardMaterial({ color: "#b9b0a2", roughness: 0.5 });
-    return { woodMat, metalMat, chairMat, floorMat, slateMat, wallMat, wainscotMat, ceilingMat, trimMat };
+    // Shared unit cylinder (radius 1, height 1) for every desk/chair leg — see buildDeskLegInstances.
+    const unitCylinder = new THREE.CylinderGeometry(1, 1, 1, 8);
+    // Shared leaf blade shape + one material per colour for the potted plants' instanced leaves —
+    // see buildPlantLeafInstances. Matches PottedPlant's own leaf geometry/material exactly.
+    const leafShape = new THREE.Shape();
+    leafShape.moveTo(0, 0);
+    leafShape.bezierCurveTo(0.16, 0.2, 0.2, 0.68, 0, 1.05);
+    leafShape.bezierCurveTo(-0.2, 0.68, -0.16, 0.2, 0, 0);
+    const leafGeometry = new THREE.ShapeGeometry(leafShape, 10);
+    const leafDeepMat = new THREE.MeshStandardMaterial({
+      color: PALETTE.leafDeep,
+      side: THREE.DoubleSide,
+      roughness: 0.45,
+      emissive: PALETTE.leafDeep,
+      emissiveIntensity: 0.07,
+    });
+    const leafBrightMat = new THREE.MeshStandardMaterial({
+      color: PALETTE.leafBright,
+      side: THREE.DoubleSide,
+      roughness: 0.45,
+      emissive: PALETTE.leafBright,
+      emissiveIntensity: 0.07,
+    });
+    return {
+      woodMat,
+      metalMat,
+      chairMat,
+      floorMat,
+      slateMat,
+      wallMat,
+      wainscotMat,
+      ceilingMat,
+      trimMat,
+      unitCylinder,
+      leafGeometry,
+      leafDeepMat,
+      leafBrightMat,
+    };
   }, []);
 
   // Slight per-desk position/rotation jitter so the row reads as real furniture, not a grid of
@@ -754,6 +864,28 @@ function ClassroomScene() {
         z: Math.floor(i / 2) * 2.2 - 1.5 + (seededJitter(i, 2) - 0.5) * 0.12,
         rotationY: (seededJitter(i, 3) - 0.5) * 0.08,
       })),
+    [],
+  );
+
+  // The teacher's own chair legs (fixed, no jitter) folded into the same instanced batch as the
+  // student desks' — its group sits at [0,0,-5.5] with the chair itself offset [0,0,-0.75] further.
+  const deskLegInstances = useMemo<InstanceTransform[]>(() => {
+    const teacherChairLegs: InstanceTransform[] = [
+      { position: [-0.22, 0.22, -6.07], rotation: [0, 0, 0], scale: [0.022, 0.44, 0.022] },
+      { position: [0.22, 0.22, -6.07], rotation: [0, 0, 0], scale: [0.022, 0.44, 0.022] },
+      { position: [-0.2, 0.34, -6.45], rotation: [0, 0, 0], scale: [0.022, 0.68, 0.022] },
+      { position: [0.2, 0.34, -6.45], rotation: [0, 0, 0], scale: [0.022, 0.68, 0.022] },
+    ];
+    return [...buildDeskLegInstances(desks), ...teacherChairLegs];
+  }, [desks]);
+
+  const plantLeaves = useMemo(
+    () =>
+      buildPlantLeafInstances([
+        { position: [-6.35, 0, -3.35], scale: 1.05 },
+        { position: [-6.35, 0, -0.35], scale: 0.95 },
+        { position: [6.1, 0, -6.2], scale: 1.3 },
+      ]),
     [],
   );
 
@@ -887,9 +1019,21 @@ function ClassroomScene() {
 
       {/* Potted plants — the biophilic counterweight to the noir gold/wine palette used elsewhere:
        * real green, real life, not just another metal-and-varnish surface. */}
-      <PottedPlant position={[-6.35, 0, -3.35]} scale={1.05} />
-      <PottedPlant position={[-6.35, 0, -0.35]} scale={0.95} />
-      <PottedPlant position={[6.1, 0, -6.2]} scale={1.3} />
+      <PlantPot position={[-6.35, 0, -3.35]} scale={1.05} />
+      <PlantPot position={[-6.35, 0, -0.35]} scale={0.95} />
+      <PlantPot position={[6.1, 0, -6.2]} scale={1.3} />
+      {/* All 3 plants' leaves (27 total), drawn as 2 instanced batches (one per colour) instead of
+       * 27 separate meshes — see buildPlantLeafInstances. */}
+      <Instances geometry={materials.leafGeometry} material={materials.leafDeepMat}>
+        {plantLeaves.deep.map((p, i) => (
+          <Instance key={i} position={p.position} rotation={p.rotation} scale={p.scale} />
+        ))}
+      </Instances>
+      <Instances geometry={materials.leafGeometry} material={materials.leafBrightMat}>
+        {plantLeaves.bright.map((p, i) => (
+          <Instance key={i} position={p.position} rotation={p.rotation} scale={p.scale} />
+        ))}
+      </Instances>
 
       {/* Wall decor: a clock and two botanical posters, mounted on the right side wall instead of
        * flanking the board — that keeps the newly-solid back wall reading as an actual wall, not
@@ -1039,16 +1183,8 @@ function ClassroomScene() {
             <sphereGeometry args={[0.5, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
           </mesh>
           <RoundedBox args={[0.52, 0.5, 0.055]} radius={0.03} smoothness={2} position={[0, 0.68, -0.24]} rotation={[0.22, 0, 0]} material={materials.chairMat} castShadow />
-          {[
-            [-0.22, 0.22, 0.18],
-            [0.22, 0.22, 0.18],
-            [-0.2, 0.34, -0.2],
-            [0.2, 0.34, -0.2],
-          ].map((p, i) => (
-            <mesh key={i} position={p as THREE.Vector3Tuple} material={materials.metalMat}>
-              <cylinderGeometry args={[0.022, 0.022, i < 2 ? 0.44 : 0.68, 6]} />
-            </mesh>
-          ))}
+          {/* Chair legs are drawn via the shared cylinder Instances block below (deskLegInstances
+           * includes these 4, fixed at this group's own offset) rather than as meshes here. */}
         </group>
       </group>
 
@@ -1058,10 +1194,16 @@ function ClassroomScene() {
           position={[d.x, 0, d.z]}
           rotationY={d.rotationY}
           woodMat={materials.woodMat}
-          metalMat={materials.metalMat}
           chairMat={materials.chairMat}
         />
       ))}
+      {/* All 54 desk/chair leg cylinders plus the teacher's own 4 chair legs, drawn as one instanced
+       * draw call instead of 58 separate meshes — see buildDeskLegInstances. */}
+      <Instances geometry={materials.unitCylinder} material={materials.metalMat} castShadow={false}>
+        {deskLegInstances.map((p, i) => (
+          <Instance key={i} position={p.position} rotation={p.rotation} scale={p.scale} />
+        ))}
+      </Instances>
 
       {/* Windows down the left wall */}
       <Window position={[-6.95, 2.8, -3]} rotationY={Math.PI / 2} />
