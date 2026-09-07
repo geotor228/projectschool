@@ -939,56 +939,115 @@ export function createLabDiagramTexture(kind: DiagramKind, width = 640) {
     ctx.fillStyle = "#6d7784";
     ctx.fillText("estructures moleculars", 34, height * 0.125);
 
-    const ring = (rx: number, ry: number, r: number, tail: boolean) => {
+    // Skeletal drawing helpers. The previous version drew a plain hexagon with two double bonds
+    // for both limonene and beta-pinene, which is a cyclohexadiene and not either compound — on a
+    // chemistry project that is a factual error on the wall, so the skeletons are drawn properly:
+    // limonene as a cyclohexene carrying a methyl and an isopropenyl group, and the two acyclic
+    // terpenes as real chains with their branches and their alcohol.
+    type P = [number, number];
+    const bond = (a: P, b: P) => {
       ctx.strokeStyle = ink;
       ctx.lineWidth = 2.4;
       ctx.beginPath();
-      for (let i = 0; i <= 6; i++) {
-        const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
-        const px = rx + Math.cos(a) * r;
-        const py = ry + Math.sin(a) * r;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
+      ctx.moveTo(a[0], a[1]);
+      ctx.lineTo(b[0], b[1]);
       ctx.stroke();
-      // Inner double-bond strokes, the visual signature of an unsaturated ring.
-      ctx.beginPath();
-      for (const k of [0, 2]) {
-        const a1 = (k / 6) * Math.PI * 2 - Math.PI / 2;
-        const a2 = ((k + 1) / 6) * Math.PI * 2 - Math.PI / 2;
-        ctx.moveTo(rx + Math.cos(a1) * r * 0.76, ry + Math.sin(a1) * r * 0.76);
-        ctx.lineTo(rx + Math.cos(a2) * r * 0.76, ry + Math.sin(a2) * r * 0.76);
-      }
-      ctx.stroke();
-      if (tail) {
-        ctx.beginPath();
-        ctx.moveTo(rx + r, ry);
-        ctx.lineTo(rx + r * 1.7, ry - r * 0.4);
-        ctx.lineTo(rx + r * 2.3, ry + r * 0.1);
-        ctx.stroke();
-      }
+    };
+    const chain = (pts: P[]) => {
+      for (let i = 0; i < pts.length - 1; i++) bond(pts[i], pts[i + 1]);
+    };
+    // Second stroke of a double bond, offset perpendicular to the bond and shortened at both ends.
+    const dbl = (a: P, b: P, side = 1) => {
+      const dx = b[0] - a[0];
+      const dy = b[1] - a[1];
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = (-dy / len) * (width * 0.011) * side;
+      const ny = (dx / len) * (width * 0.011) * side;
+      const t = 0.16;
+      bond(
+        [a[0] + dx * t + nx, a[1] + dy * t + ny],
+        [b[0] - dx * t + nx, b[1] - dy * t + ny],
+      );
     };
 
-    ring(cx - width * 0.12, height * 0.3, width * 0.11, true);
-    ctx.fillStyle = ink;
-    ctx.font = `500 ${Math.round(width * 0.042)}px "Helvetica Neue", Arial, sans-serif`;
-    ctx.fillText("Limonè · C10H16", 34, height * 0.45);
+    const label = (text: string, y: number) => {
+      ctx.fillStyle = ink;
+      ctx.font = `500 ${Math.round(width * 0.042)}px "Helvetica Neue", Arial, sans-serif`;
+      ctx.fillText(text, 34, y);
+    };
 
-    ring(cx - width * 0.12, height * 0.6, width * 0.11, false);
-    ctx.fillText("β-Pinè · C10H16", 34, height * 0.75);
-
-    // A short open chain for the alcohol.
-    ctx.strokeStyle = ink;
-    ctx.beginPath();
-    let x = width * 0.2;
-    for (let i = 0; i < 6; i++) {
-      const y = height * (i % 2 === 0 ? 0.85 : 0.885);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-      x += width * 0.1;
+    // --- Limonene: cyclohexene, methyl on C1, isopropenyl on C4 ---
+    {
+      const rx = cx - width * 0.13;
+      const ry = height * 0.29;
+      const r = width * 0.1;
+      const v: P[] = [];
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+        v.push([rx + Math.cos(a) * r, ry + Math.sin(a) * r]);
+      }
+      chain([...v, v[0]]);
+      dbl(v[0], v[1], -1);
+      // Methyl on the alkene carbon.
+      bond(v[0], [v[0][0] - r * 0.85, v[0][1] - r * 0.55]);
+      // Isopropenyl on the opposite carbon: a bond out, then a branch with a terminal alkene.
+      const iso: P = [v[3][0] + r * 0.85, v[3][1] + r * 0.55];
+      bond(v[3], iso);
+      const meth: P = [iso[0] + r * 0.9, iso[1] + r * 0.2];
+      const ch2: P = [iso[0] + r * 0.1, iso[1] + r * 1.0];
+      bond(iso, meth);
+      bond(iso, ch2);
+      dbl(iso, ch2, 1);
+      label("Limonè · C₁₀H₁₆", height * 0.45);
     }
-    ctx.stroke();
-    ctx.fillText("Linalool · C10H18O", 34, height * 0.94);
+
+    // --- Myrcene: acyclic, two conjugated alkenes and a branch ---
+    {
+      const x0 = width * 0.16;
+      const y0 = height * 0.6;
+      const step = width * 0.11;
+      const rise = height * 0.035;
+      const p: P[] = [
+        [x0, y0 + rise],
+        [x0 + step, y0 - rise],
+        [x0 + step * 2, y0 + rise],
+        [x0 + step * 3, y0 - rise],
+        [x0 + step * 4, y0 + rise],
+        [x0 + step * 5, y0 - rise],
+      ];
+      chain(p);
+      dbl(p[0], p[1], 1);
+      dbl(p[4], p[5], 1);
+      // Branch: the exocyclic methylene that makes it myrcene rather than a plain diene.
+      const br: P = [p[2][0], p[2][1] + height * 0.075];
+      bond(p[2], br);
+      dbl(p[2], br, 1);
+      bond(p[5], [p[5][0] + step * 0.75, p[5][1] + rise * 2]);
+      label("Mircè · C₁₀H₁₆", height * 0.72);
+    }
+
+    // --- Linalool: tertiary alcohol on a branched chain ---
+    {
+      const x0 = width * 0.16;
+      const y0 = height * 0.85;
+      const step = width * 0.1;
+      const rise = height * 0.03;
+      const p: P[] = [
+        [x0, y0 + rise],
+        [x0 + step, y0 - rise],
+        [x0 + step * 2, y0 + rise],
+        [x0 + step * 3, y0 - rise],
+        [x0 + step * 4, y0 + rise],
+      ];
+      chain(p);
+      dbl(p[0], p[1], 1);
+      // Quaternary carbon carrying the OH and a vinyl group.
+      bond(p[3], [p[3][0] + step * 0.2, p[3][1] - height * 0.05]);
+      ctx.fillStyle = ink;
+      ctx.font = `500 ${Math.round(width * 0.038)}px "Helvetica Neue", Arial, sans-serif`;
+      ctx.fillText("OH", p[3][0] + step * 0.05, p[3][1] - height * 0.068);
+      label("Linalool · C₁₀H₁₈O", height * 0.95);
+    }
   }
 
   const map = new THREE.CanvasTexture(canvas);
