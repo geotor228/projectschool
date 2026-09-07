@@ -1,11 +1,21 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ensureGsap } from "@/lib/gsap";
 import { setJourneyProgress, setTransitioning, TRANSIT_RANGES, TRANSIT_DURATION_MS } from "@/lib/journeyState";
-import Scene from "./Scene";
 import JourneyCurtain from "./JourneyCurtain";
+
+// Scene pulls in three.js, R3F, drei and postprocessing — most of this app's JS weight — so it's
+// split into its own chunk instead of shipping in the same bundle as the page shell. `ssr: false`
+// skips it entirely during server rendering (a WebGL canvas has nothing useful to render server-side
+// anyway); the plain dark background behind `loading` matches the scene's own fog colour, so there's
+// no flash before the canvas takes over.
+const Scene = dynamic(() => import("./Scene"), {
+  ssr: false,
+  loading: () => <div className="h-full w-full" style={{ background: "#0b0908" }} />,
+});
 
 const JOURNEY_HEIGHT_VH = 600;
 

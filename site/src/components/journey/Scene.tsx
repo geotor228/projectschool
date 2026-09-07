@@ -1104,6 +1104,9 @@ function ClassroomScene() {
         far={4}
         resolution={1024}
         color="#4a4034"
+        // The furniture it's shadowing never moves, so there's nothing to re-render for after the
+        // first frame — frames={1} freezes the depth pass instead of redoing it every frame.
+        frames={1}
       />
 
       {/* Daylight bounce: cool sky from above, warm wood bounce from the floor. The upward tone was
@@ -1126,9 +1129,9 @@ function ClassroomScene() {
         // back towards cream. Near-neutral with the faintest warm cast keeps them reading as paint.
         color="#fdfaf4"
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0004}
-        shadow-radius={6}
+        shadow-radius={3}
       />
 
       {/* Interior fill, deliberately modest: with the hemisphere bounce and the window spot already
@@ -1963,7 +1966,7 @@ function LabScene() {
 
       {/* Flask — clear glass with a separate amber liquid pool, not one flat tinted-glass sphere */}
       <mesh ref={flaskRef} position={[0, flaskY, 0]} castShadow>
-        <sphereGeometry args={[flaskRadius, 32, 32]} />
+        <sphereGeometry args={[flaskRadius, 24, 24]} />
         <meshPhysicalMaterial color="#f2f6f2" transmission={0.93} roughness={0.04} thickness={0.25} ior={1.5} />
       </mesh>
       <mesh position={[0, flaskY - flaskRadius * 0.32, 0]}>
@@ -2052,7 +2055,7 @@ function LabScene() {
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0005}
-        shadow-radius={4}
+        shadow-radius={2}
       />
       <pointLight position={[1.6, 1.2, 1.6]} intensity={3.4} distance={4.5} decay={2} color="#eef4f6" />
       </group>
@@ -2655,7 +2658,7 @@ function MoleculeScene() {
           <Bond key={i} to={pos} material={molMaterials.chrome} />
         ))}
         <mesh castShadow>
-          <sphereGeometry args={[0.75, 32, 32]} />
+          <sphereGeometry args={[0.75, 24, 24]} />
           <primitive object={molMaterials.dark} attach="material" />
         </mesh>
         {atoms.map((pos, i) => (
@@ -2978,7 +2981,10 @@ export default function Scene() {
   return (
     <Canvas
       dpr={[1, 1.5]}
-      shadows={{ type: THREE.VSMShadowMap }}
+      // PCFSoftShadowMap instead of VSM: visually close enough at the sizes these shadow maps
+      // render at, but noticeably cheaper per frame — VSM renders an extra blur pass per shadow
+      // map every frame, which adds up with 3 shadow-casting lights across the journey.
+      shadows={{ type: THREE.PCFSoftShadowMap }}
       gl={{ antialias: true, powerPreference: "high-performance" }}
       camera={{ fov: 55, near: 0.1, far: 120, position: [0, 1.2, STATIONS.hero] }}
       onCreated={({ scene, camera }) => {
