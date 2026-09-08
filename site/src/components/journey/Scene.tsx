@@ -186,6 +186,13 @@ function useStationDissolve(
   stationZ: number,
   { inAt = 13.5, outAt = 6, fade = 2.5 }: { inAt?: number; outAt?: number; fade?: number } = {},
 ) {
+  // Last `t` this hook actually applied — lets a dwell (where `t` sits pinned at exactly 1 the
+  // entire time the camera is parked in this room) skip the traverse below entirely instead of
+  // walking every material in the room and reassigning the same opacity 60 times a second. Only a
+  // stretch where `t` is actually *changing* (the couple of world-units on either side of a room's
+  // own fade zone) still pays for it, which is a small fraction of the total time any room is on
+  // screen.
+  const lastT = useRef<number | null>(null);
   useFrame(() => {
     const group = ref.current;
     if (!group) return;
@@ -196,6 +203,9 @@ function useStationDissolve(
       ahead >= 0
         ? THREE.MathUtils.clamp((inAt - ahead) / fade, 0, 1)
         : THREE.MathUtils.clamp((outAt + ahead) / fade, 0, 1);
+
+    if (t === lastT.current) return;
+    lastT.current = t;
 
     group.visible = t > 0.01;
     if (!group.visible) return;
