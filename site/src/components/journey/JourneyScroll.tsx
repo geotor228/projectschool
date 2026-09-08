@@ -4,7 +4,13 @@ import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ensureGsap } from "@/lib/gsap";
-import { setJourneyProgress, setTransitioning, TRANSIT_RANGES, TRANSIT_DURATION_MS } from "@/lib/journeyState";
+import {
+  setJourneyProgress,
+  setTransitioning,
+  requestCameraSnap,
+  TRANSIT_RANGES,
+  TRANSIT_DURATION_MS,
+} from "@/lib/journeyState";
 import JourneyCurtain from "./JourneyCurtain";
 
 // Scene pulls in three.js, R3F, drei and postprocessing — most of this app's JS weight — so it's
@@ -71,6 +77,10 @@ export default function JourneyScroll({ children }: { children: React.ReactNode 
       // would resume from a slightly different spot than the tween below started from.
       window.scrollTo(0, scrollYForProgress(from));
       prevProgress = from;
+      // A raw scroll jump big enough to trigger this can leave `from` well past wherever the
+      // camera's own damped position currently is (see cameraSnapState's own comment) — request an
+      // instant snap on CameraRig's very next frame instead of a multi-frame catch-up ease.
+      requestCameraSnap();
       setJourneyProgress(from);
 
       const html = document.documentElement;

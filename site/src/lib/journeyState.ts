@@ -37,6 +37,18 @@ export function setTransitioning(active: boolean) {
  * scrubbed. See JourneyScroll.tsx for how this is actually driven. */
 export const TRANSIT_DURATION_MS = 380;
 
+/** Set right before a locked jump forces `progress` to a new value discontinuously (see
+ * runLockedJump in JourneyScroll.tsx) — a raw scroll jump big enough to cross a transit boundary in
+ * one tick can land `progress` well past wherever the camera's own damped position currently is, so
+ * without this the camera would spend the next several frames visibly "catching up" to the new
+ * target — motion that isn't guaranteed to finish within the portal's own opaque window, and so can
+ * bleed into view after it lifts. CameraRig reads this once on the very next frame and, if set,
+ * snaps straight to the target instead of easing toward it, then clears it. */
+export const cameraSnapState = { pending: false };
+export function requestCameraSnap() {
+  cameraSnapState.pending = true;
+}
+
 /** The journey's five stations, as world-Z camera positions. Scene.tsx imports this rather than
  * declaring its own copy — camera math here and scene-object placement there have to agree on the
  * same numbers, and they drifted apart once before when each side kept its own constant. */

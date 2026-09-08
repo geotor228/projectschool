@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, ContactShadows, Text, RoundedBox, Instances, Instance } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postprocessing";
@@ -14,6 +14,7 @@ import {
   dwellInfoForProgress,
   tourPoseAt,
   setJourneyProgress,
+  cameraSnapState,
 } from "@/lib/journeyState";
 import {
   createWoodTexture,
@@ -130,9 +131,18 @@ function CameraRig() {
     // this — combined with a tour now holding briefly at each of 6 closer-together stops instead of
     // 3 widely-spaced ones (see `stopEase` in journeyState.ts) — is what turns "jerky" into a slow,
     // continuous glide.
-    state.camera.position.x = THREE.MathUtils.damp(state.camera.position.x, targetX, 3, delta);
-    state.camera.position.y = THREE.MathUtils.damp(state.camera.position.y, targetY, 3, delta);
-    state.camera.position.z = THREE.MathUtils.damp(state.camera.position.z, targetZ, 4.5, delta);
+    // A locked jump (see runLockedJump in JourneyScroll.tsx) can move `progress` a long way in one
+    // tick — snap straight to the target for this one frame instead of easing into it, so there's
+    // no leftover catch-up motion still playing once the portal's opaque window lifts.
+    const snap = cameraSnapState.pending;
+    cameraSnapState.pending = false;
+    if (snap) {
+      state.camera.position.set(targetX, targetY, targetZ);
+    } else {
+      state.camera.position.x = THREE.MathUtils.damp(state.camera.position.x, targetX, 3, delta);
+      state.camera.position.y = THREE.MathUtils.damp(state.camera.position.y, targetY, 3, delta);
+      state.camera.position.z = THREE.MathUtils.damp(state.camera.position.z, targetZ, 4.5, delta);
+    }
 
     // Look-ahead was 12 units, which meant that during the empty stretch between two stations'
     // set dressing, the camera was aimed at a point even further into that empty stretch than
@@ -148,9 +158,13 @@ function CameraRig() {
     const desiredLookX = tourPose ? tourPose.look[0] : sway * 0.5;
     const desiredLookY = tourPose ? tourPose.look[1] : 1;
     const desiredLookZ = tourPose ? tourPose.look[2] : z - 5;
-    target.x = THREE.MathUtils.damp(target.x, desiredLookX, 3, delta);
-    target.y = THREE.MathUtils.damp(target.y, desiredLookY, 3, delta);
-    target.z = THREE.MathUtils.damp(target.z, desiredLookZ, 3, delta);
+    if (snap) {
+      target.set(desiredLookX, desiredLookY, desiredLookZ);
+    } else {
+      target.x = THREE.MathUtils.damp(target.x, desiredLookX, 3, delta);
+      target.y = THREE.MathUtils.damp(target.y, desiredLookY, 3, delta);
+      target.z = THREE.MathUtils.damp(target.z, desiredLookZ, 3, delta);
+    }
     state.camera.lookAt(target);
   });
   return null;
@@ -1912,7 +1926,8 @@ function LabScene() {
       roughness: 0.96,
       envMapIntensity: 0.05,
     });
-    const tile = createTileFloorTexture({ size: 1024, tiles: 4, repeat: [5, 11], seed: 7 });
+    // Was 1024 — a tiled floor pattern reads the same at 768 once repeated across the room.
+    const tile = createTileFloorTexture({ size: 768, tiles: 4, repeat: [5, 11], seed: 7 });
     const floorMat = new THREE.MeshStandardMaterial({
       map: tile.map,
       roughnessMap: tile.roughnessMap,
@@ -1947,7 +1962,9 @@ function LabScene() {
   // actually needs — the Clevenger rig, the hydrodistillation process, and the terpene structures.
   const charts = useMemo(
     () => ({
-      periodic: createPeriodicTableTexture(1600),
+      // Was 1600 — the table is only ever viewed from a couple of metres back (never a tight
+      // close-up zoom), where 1200 reads exactly as sharp while using ~44% less texture memory.
+      periodic: createPeriodicTableTexture(1200),
       clevenger: createLabDiagramTexture("clevenger", 640),
       distillation: createLabDiagramTexture("distillation", 640),
       molecules: createLabDiagramTexture("molecules", 640),
@@ -2560,8 +2577,11 @@ function MoleculeScene() {
   // Every surface here is a manufactured panel rather than paint — that, plus the lit seams, is
   // what separates a research facility from a plain bright room.
   const roomMaterials = useMemo(() => {
+    // Was 1024 — a tiled, repeated panel pattern reads the same at 800 (it's the seam/bolt detail
+    // that carries the look, not fine resolution), for meaningfully less texture memory across the
+    // 3 maps (colour/roughness/normal) this generates.
     const wallPanels = createTechPanelTexture({
-      size: 1024,
+      size: 800,
       panelsX: 4,
       panelsY: 3,
       base: "#dbe0e4",
@@ -2579,7 +2599,7 @@ function MoleculeScene() {
       envMapIntensity: 0.7,
     });
     const floorPanels = createTechPanelTexture({
-      size: 1024,
+      size: 800,
       panelsX: 3,
       panelsY: 3,
       base: "#c9d0d5",
@@ -3129,6 +3149,36 @@ function HorizonScene() {
   );
 }
 
+/** Mounts `children` only once the camera has ever come within `radius` of `approachZ`, then keeps
+ * them mounted forever after (a one-way latch, never un-mounts) — every room's procedural textures
+ * currently get generated the moment the page loads, all 5 stations at once, regardless of whether
+ * the visitor ever scrolls that far. Spreading that out so a room's own geometry/textures are only
+ * built once actually approaching it cuts the memory footprint held at any given time, especially
+ * early in the journey and for anyone who never scrolls all the way to the end.
+ *
+ * Deliberately does *not* try to reclaim memory by un-mounting a room once you've moved past it —
+ * that would need every material/geometry/texture in the room explicitly `.dispose()`d (most of
+ * them are plain THREE objects handed to meshes as props, not authored as JSX children, so R3F's own
+ * auto-dispose-on-unmount doesn't cover them), and would leave a scene with holes if the rare
+ * backward scroll this site still allows for landed you back on one. This is the safe half of that
+ * idea: lower peak memory without touching how revisiting an already-seen room behaves at all. */
+function LazyMount({
+  approachZ,
+  radius = 24,
+  children,
+}: {
+  approachZ: number;
+  radius?: number;
+  children: React.ReactNode;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useFrame(() => {
+    if (mounted) return;
+    if (Math.abs(cameraZForProgress(journeyState.progress) - approachZ) < radius) setMounted(true);
+  });
+  return mounted ? <>{children}</> : null;
+}
+
 export default function Scene() {
   return (
     <Canvas
@@ -3172,10 +3222,18 @@ export default function Scene() {
       <TransitGlow z={(STATIONS.classroom + STATIONS.lab) / 2} color={PALETTE.leafBright} />
       <TransitGlow z={(STATIONS.lab + STATIONS.molecule) / 2} color={PALETTE.secondary} />
       <TransitGlow z={(STATIONS.molecule + STATIONS.horizon) / 2} color={PALETTE.accent} />
-      <ClassroomScene />
-      <LabScene />
-      <MoleculeScene />
-      <HorizonScene />
+      <LazyMount approachZ={STATIONS.classroom}>
+        <ClassroomScene />
+      </LazyMount>
+      <LazyMount approachZ={STATIONS.lab}>
+        <LabScene />
+      </LazyMount>
+      <LazyMount approachZ={STATIONS.molecule}>
+        <MoleculeScene />
+      </LazyMount>
+      <LazyMount approachZ={STATIONS.horizon}>
+        <HorizonScene />
+      </LazyMount>
       <EffectComposer multisampling={0}>
         {/* Threshold sits high on purpose. At 0.45 it was tuned for the near-black scenes, where
          * only light sources ever got that bright — but a white-walled lab is above that threshold
