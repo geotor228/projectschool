@@ -29,7 +29,7 @@ El que proposo és comparar dos mètodes d'extracció sobre pètals de rosa: la 
 - Veure si els avantatges de la UAHD documentats en cítrics es mantenen amb un material diferent.
 - Ser honest sobre les limitacions de fer aquest experiment amb equipament casolà.
 
-**Pregunta d'investigació:** Com afecta el mètode d'extracció, hidrodestil·lació convencional versus hidrodestil·lació assistida per ultrasons, al rendiment (%) i al temps d'extracció de l'oli essencial de pètals de rosa?
+**Pregunta d'investigació:** Com afecta al rendiment (%) i al temps d'extracció de l'oli essencial de pètals de rosa el fet de fer servir hidrodestil·lació convencional o hidrodestil·lació assistida per ultrasons?
 
 **Hipòtesi:** Crec que la UAHD donarà un rendiment més alt en menys temps que el mètode convencional, perquè la cavitació acústica hauria de trencar les estructures cel·lulars que contenen l'oli i facilitar que surti cap a l'aigua.
 
@@ -69,7 +69,7 @@ Amb el desenvolupament de la química orgànica als segles XVIII i XIX, els cien
 
 A partir d'aquí, i sobretot durant el segle XX, la perfumeria es converteix en una indústria basada en química fina: es comencen a sintetitzar compostos aromàtics al laboratori, cosa que permet crear olors noves i no dependre només de recursos naturals limitats. Avui dia la perfumeria combina compostos naturals i sintètics.
 
-El que trobo més rellevant per a aquest treball és que, més recentment, la indústria ha començat a adoptar tècniques d'extracció "verdes", com la UAHD, per raons tant econòmiques com ambientals. Aquest treball, en el fons, s'emmarca en aquesta mateixa lògica: gastar menys energia i aprofitar millor els recursos.
+Més recentment, la indústria ha començat a adoptar tècniques d'extracció "verdes" com la UAHD, tant per estalviar diners com per motius ambientals. Aquest treball, en el fons, s'emmarca en aquesta mateixa lògica: gastar menys energia i aprofitar millor els recursos.
 
 ## 3. Què és una olor: bases de l'olfacte
 
@@ -96,7 +96,7 @@ La detecció comença a l'epiteli olfactiu, una zona a la part alta del nas amb 
 
 El mecanisme exacte no es va conèixer fins al 1991, quan Linda Buck i Richard Axel van identificar la família de gens que codifica els receptors olfactius, una troballa per la qual van rebre el Premi Nobel el 2004 (Buck i Axel, 1991). En humans hi ha uns 390 gens funcionals per a receptors olfactius, dins d'una família que passa del miler si es compten els que ja no funcionen.
 
-El que trobo més interessant és que no funciona com un pany i clau d'un sol receptor per olor. Cada neurona té un únic tipus de receptor, però un mateix receptor pot respondre a diverses molècules semblants, i una mateixa molècula pot activar diversos receptors alhora. El cervell interpreta l'olor a partir d'aquest patró combinat, una mica com si poguéssim generar milers de colors combinant només uns quants colors bàsics.
+Això no funciona com un pany i una clau, amb un receptor per a cada olor. Cada neurona té un únic tipus de receptor, però un mateix receptor pot respondre a diverses molècules semblants, i una mateixa molècula pot activar diversos receptors alhora. El cervell interpreta l'olor a partir d'aquest patró combinat, una mica com si poguéssim generar milers de colors combinant només uns quants colors bàsics.
 
 Això també explica un fenomen que segur que tothom ha notat alguna vegada: que hi hagi persones que no percebin una olor concreta que per a altres és evident. Si cada persona té petites variacions genètiques en els seus gens de receptors, té sentit que el patró que percep cadascú davant la mateixa molècula no sigui exactament igual. Quan falta la capacitat de detectar olors, en general o d'una molècula concreta, se'n diu anòsmia.
 
