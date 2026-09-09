@@ -213,25 +213,25 @@ const TOURS: Partial<Record<StationKey, CameraPose[]>> = {
     // Stop 0 (view): pulled back and slightly raised — the whole room (desks, board, side walls,
     // corkboard) in frame at once, the establishing shot on arrival.
     { pos: [0, 1.7, -9.5], look: [0, 1.3, -17] },
-    // Stop 1 (card "Запах — это химия"): a modest lean in over the desks, still wide.
+    // Stop 1 (card "L'olor és química"): a modest lean in over the desks, still wide.
     { pos: [0.4, 1.55, -12], look: [0, 1.3, -16.5] },
     // Stop 2 (view): a look down at a student desk's own clutter — books, a stray pencil.
     { pos: [-1.3, 1.35, -13.5], look: [-1.3, 0.65, -15.6] },
-    // Stop 3 (card "Один цветок, два способа"): lean toward the wall poster/corkboard (world
+    // Stop 3 (card "Una flor, dos mètodes"): lean toward the wall poster/corkboard (world
     // x≈6-7 side) — unchanged from before; this framing was never the problem.
     { pos: [1.7, 1.3, -15], look: [3.8, 1.4, -17.2] },
     // Stop 4 (view): the whole blackboard, clean and comfortably back from it (~5.5 units, not the
     // ~2.2 that used to make its accent strip read as a stray diagonal line) — enough to actually
     // read the lesson on it.
     { pos: [0, 1.6, -14.5], look: [0, 1.7, -19.5] },
-    // Stop 5 (card "Что всё решает"): a little closer to the board (~4 units) for the closing beat,
+    // Stop 5 (card "La pregunta que ho decideix tot"): a little closer to the board (~4 units) for the closing beat,
     // but never nose-to-nose with it.
     { pos: [0, 1.5, -16], look: [0, 1.6, -19.5] },
   ],
   lab: [
     // Stop 0 (view): pulled back, the whole bench and both apparatus visible.
     { pos: [0, 1.7, -29.5], look: [0, 1.3, -37] },
-    // Stop 1 (card "Два стакана, одна гипотеза"): both setups (the flask/condenser and the
+    // Stop 1 (card "Dos vasos, una hipòtesi"): both setups (the flask/condenser and the
     // ultrasonic bath) framed together, since the card is explicitly about the two side by side.
     { pos: [0.3, 1.5, -32], look: [0, 1.1, -35.3] },
     // Stop 2 (view): the glassware rack — turned into a genuine "look at this" beat instead of an
@@ -242,20 +242,20 @@ const TOURS: Partial<Record<StationKey, CameraPose[]>> = {
     { pos: [-0.5, 1.6, -31.5], look: [-2.3, -0.5, -34.9] },
     // Stop 4 (view): the periodic table, dead-on and comfortably back (~5.5 units from the wall).
     { pos: [-0.6, 1.6, -38.5], look: [-0.6, 1.5, -44] },
-    // Stop 5 (card "Но почему это вообще работает?"): the terpene-structures wall chart specifically
+    // Stop 5 (card "Però per què funciona, exactament?"): the terpene-structures wall chart specifically
     // (world ≈ [-3.85, 0.45, -43.93]) — bridges toward the molecule room next door.
     { pos: [-2.5, 1.4, -39], look: [-3.85, 0.7, -43.9] },
   ],
   molecule: [
     // Stop 0 (view): pulled back, the whole room visible.
     { pos: [0, 1.7, -49.5], look: [0, 1.3, -57] },
-    // Stop 1 (card "Нос умнее, чем кажется"): straight down the room's central aisle, monitors
+    // Stop 1 (card "El nas és més llest del que sembla"): straight down the room's central aisle, monitors
     // flanking either side — the card's text isn't about one specific prop, so this just keeps
     // moving forward through the space rather than leaning at anything in particular.
     { pos: [0, 1.6, -52], look: [0, 1.1, -58] },
     // Stop 2 (view): the right-hand bench's centrifuge and robotic arm at work.
     { pos: [3.0, 1.35, -54.5], look: [4.9, -0.3, -52.3] },
-    // Stop 3 (card "Взрыв внутри пузырька"): the central island bench.
+    // Stop 3 (card "Una explosió dins la bombolla"): the central island bench.
     { pos: [-1.1, 1.25, -54.7], look: [-1.9, 0.75, -58.3] },
     // Stop 4 (view): the tube-storage cabinet on the left wall (world ≈ [-5.65, ·, -54.6]). Was the
     // server racks at z≈-59/-61, ~4.5 units deeper than every neighbouring stop (stop 3 at -54.7,
@@ -266,7 +266,7 @@ const TOURS: Partial<Record<StationKey, CameraPose[]>> = {
     // cylinder looming in the foreground, from a point along the path no card was ever meant to
     // linger at. The cabinet sits at almost the same depth as its neighbours instead.
     { pos: [-3, 1.4, -56], look: [-5.5, -0.5, -54.8] },
-    // Stop 5 (card "Осталось проверить на практике"): the molecule exhibit on its lit plinth (world
+    // Stop 5 (card "Falta comprovar-ho a la pràctica"): the molecule exhibit on its lit plinth (world
     // ≈ [2.45, ·, -57.9]) — the room's own centrepiece, and the last thing seen before the portal.
     { pos: [1.5, 1.3, -55.5], look: [2.3, 1.0, -57.5] },
   ],

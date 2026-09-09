@@ -1138,25 +1138,27 @@ function ClassroomScene() {
       {/* A real lesson written on the board, not a floating logo — title, the molecule of the
        * day, the actual yield formula the TDR uses, and the terpene family it belongs to. */}
       <Text position={[-3.2, 4.65, -5.93]} fontSize={0.4} color="#f4f1e4" anchorX="left" anchorY="middle" letterSpacing={0.02}>
-        {"ТЕРПЕНЫ"}
+        {"TERPENS"}
       </Text>
 
       <mesh position={[-2.6, 3.35, -5.93]} rotation={[0, 0, 0.2]}>
         <ringGeometry args={[0.32, 0.35, 6]} />
         <meshBasicMaterial color="#eef1e8" transparent opacity={0.55} side={THREE.DoubleSide} />
       </mesh>
+      {/* Geraniol, not the earlier β-Pinene placeholder — an alcohol actually central to the rose
+       * chemistry this TDR studies, not an unrelated compound that never appears anywhere else. */}
       <Text position={[-1.85, 3.4, -5.93]} fontSize={0.28} color="#eef1e8" anchorX="left" anchorY="middle">
-        {"β-Pineno"}
+        {"Geraniol"}
       </Text>
       <Text position={[-1.85, 2.98, -5.93]} fontSize={0.2} color="#c9d0bf" anchorX="left" anchorY="middle">
-        {"C10H16"}
+        {"C10H18O"}
       </Text>
 
       <Text position={[-3.2, 2.35, -5.93]} fontSize={0.16} color="#eef1e8" anchorX="left" anchorY="middle" maxWidth={6.6}>
-        {"Rendiment (%) = m(масла) / m(лепестков) × 100"}
+        {"Rendiment (%) = m(oli) / m(pètals) × 100"}
       </Text>
       <Text position={[-3.2, 1.78, -5.93]} fontSize={0.17} color="#b9c7b6" anchorX="left" anchorY="middle" maxWidth={6.6}>
-        {"Лимонен · Мирцен · Линалоол · Гераниол"}
+        {"Citronel·lol · Geraniol · Nerol · Limonè"}
       </Text>
 
       {/* Teacher's desk, larger, facing the class — pushed back near the board so the camera's
@@ -2101,7 +2103,7 @@ function LabScene() {
         aspect={charts.molecules.aspect}
         width={1.3}
       />
-      <Poster position={[4.83, 2.1, 4]} rotationY={-Math.PI / 2} label={"NATURAL SCIENCE\nBETTER FUTURE"} />
+      <Poster position={[4.83, 2.1, 4]} rotationY={-Math.PI / 2} label={"CIÈNCIA NATURAL\nFUTUR MILLOR"} />
       <PendantLight position={[0, 2.9, 0.7]} width={4} dropFrom={1.45} />
       <PendantLight position={[0, 2.9, -4.2]} width={4} dropFrom={1.45} />
       <BarStool position={[0, -0.82, 2.6]} />

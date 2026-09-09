@@ -8,7 +8,13 @@ import { DWELL_WINDOW, STOPS_PER_ROOM, splitIntoStops } from "@/lib/journeyState
  * for a general audience — other students, people with no background in exact sciences — since
  * this site's job now is a good first impression, not a committee reading. Every number, formula
  * and citation from the original text still exists, verbatim, in a card's `detail` panel behind
- * "Подробнее" — nothing here is a rewrite of the actual TDR, only of what a visitor sees first.
+ * "Més informació" — nothing here is a rewrite of the actual TDR, only of what a visitor sees first.
+ *
+ * Text is in Catalan, matching the TDR itself (see c:\Users\User\projectschool\TDR\04_TDR\output\
+ * TDR_v05.docx) rather than the site's earlier Russian draft — content (rose as the confirmed
+ * working material, the limonene/citronel·lol-geraniol chemistry contrast, the real personal story
+ * from the TDR's own introduction, the Singh et al. 2025 novelty caveat) carries over from that
+ * earlier draft, only the language changed.
  *
  * Each room's dwell is split into 6 tour stops (see STOPS_PER_ROOM/TOURS in journeyState.ts); only
  * the odd-indexed ones (1, 3, 5) carry a card — the even ones are wide/establishing or pure "look
@@ -25,77 +31,92 @@ export function ClassroomCards() {
   const [c1, c2, c3] = useThreeCardStops(DWELL_WINDOW.classroom);
   return (
     <>
-      <SceneCard range={c1} side="left" eyebrow="Часть I · Класс, где всё началось" title="Запах — это химия">
+      <SceneCard range={c1} side="left" eyebrow="Part I · L'aula on tot va començar" title="L'olor és química">
         <p>
-          Разные цветы пахнут по-разному, потому что внутри — разные молекулы. Первая идея была
-          простой: взять апельсин, розу, розмарин — и посмотреть, у какого получится извлечь масла
-          «лучше». Но сравнивать настолько разные растения — всё равно что сравнивать яблоки с
-          самолётами: результат ничего не докажет, кроме того, что они разные.
+          Cada flor fa una olor diferent perquè per dins hi ha molècules diferents. La primera idea
+          era senzilla: agafar taronja, rosa i romaní, i veure de quina se n&apos;extreia «millor»
+          l&apos;oli. Però comparar plantes tan diferents és com comparar pomes amb avions: el
+          resultat només demostraria que són diferents, res més.
         </p>
       </SceneCard>
 
       <SceneCard
         range={c2}
         side="right"
-        eyebrow="Идея"
-        title="Один цветок, два способа"
+        eyebrow="La idea"
+        title="Una flor, dos mètodes"
         detail={
           <div className="space-y-3">
             <p>
-              Первая версия работы сравнивала аромат разных растений — апельсина, розы, розмарина —
-              просто по тому, какое эфирное масло получится извлечь «лучше». Но у такого сравнения
-              нет строгой научной логики: разные растения содержат принципиально разные молекулы, и
-              «лучше» здесь ничего не доказывает — это не эксперимент, а коллекция наблюдений.
+              La primera versió d&apos;aquest treball comparava l&apos;aroma de plantes diferents —
+              taronja, rosa, romaní — simplement per veure de quina s&apos;extreia «millor»
+              l&apos;oli essencial. Però aquesta comparació no té una lògica científica rigorosa:
+              plantes diferents contenen molècules radicalment diferents, i «millor» aquí no
+              demostra res.
             </p>
             <p>
-              Поэтому дизайн исследования был полностью пересмотрен: вместо сравнения растений —
-              сравнение <strong className="text-white/85">методов</strong> экстракции одного и того
-              же сырья. Это превращает работу из описательной в экспериментальную: появляется
-              независимая переменная (метод), зависимая переменная (выход масла, %) и проверяемая
-              гипотеза, которую можно подтвердить или опровергнуть числами.
+              Per això el disseny es va replantejar completament: en lloc de comparar plantes, es
+              comparen <strong className="text-white/85">mètodes</strong> d&apos;extracció d&apos;un
+              mateix material — la hipòtesi de treball: pètals de rosa (<em>Rosa damascena</em>,
+              «rosa búlgara»; espècie encara pendent de confirmar pel proveïdor floral).
             </p>
             <p>
-              Рассматривался и третий вариант интенсификации — микроволновая экстракция (MAHD), — но
-              он был отклонён из соображений безопасности: он потребовал бы небезопасной модификации
-              бытовой микроволновки. Ультразвуковая ванна оказалась единственным методом
-              интенсификации, доступным безопасно и в домашних условиях.
+              La rosa i els cítrics, sobre els quals se solen fer aquests experiments, tenen una
+              química radicalment diferent: als cítrics predomina el limonè, un hidrocarbur sense
+              oxigen; a la rosa, els alcohols citronel·lol i geraniol. La pregunta és si els
+              ultrasons funcionen igual de bé sobre alcohols que sobre hidrocarburs, i sobre un
+              pètal de flor que sobre la pell d&apos;un fruit.
             </p>
           </div>
         }
       >
         <p>
-          Решение — развернуть саму идею на 180°: вместо разных растений взять одно и то же сырьё,
-          но два разных способа его обработать. Тогда переменная всего одна — метод экстракции, — а
-          всё остальное честно одинаково. Рассматривался и третий путь, микроволновая печь, но от
-          него отказались: превращать бытовую технику в лабораторный прибор попросту небезопасно.
+          La solució: girar la idea 180°. En lloc de plantes diferents, un mateix material —
+          pètals de rosa — tractat de dues maneres diferents. Així la variable és una sola: el
+          mètode d&apos;extracció; tota la resta és honestament igual.
         </p>
       </SceneCard>
 
       <SceneCard
         range={c3}
         side="bottom"
-        eyebrow="Вопрос"
-        title="Что всё решает"
+        eyebrow="La pregunta"
+        title="La pregunta que ho decideix tot"
         detail={
-          <div className="rounded-xl border-2 border-dashed border-amber-400/50 p-3">
-            ✏️ Место для личной истории автора — 3–5 предложений о том, что лично привело к этой
-            теме.
-            <p className="mt-2 text-white/60 italic">
-              Черновик (замени фактами): «Всё началось с обычного вопроса — почему один и тот же
-              цветок пахнет по-разному свежим и в масле? Это исследование — попытка ответить на
-              него не на нюх, а числами.»
+          <div className="space-y-3">
+            <p>
+              Tot va començar amb una idea força òbvia en la qual mai m&apos;havia aturat a pensar:
+              la taronja, la rosa, el perfum — gairebé tot el que ens envolta fa alguna olor, i
+              quasi mai ens preguntem per què. Al darrere hi ha tota una química — i la pregunta
+              pràctica és encara més interessant: com es treu, exactament, aquesta olor d&apos;una
+              planta, i com es conserva?
+            </p>
+            <p>
+              La resposta clàssica és la hidrodestil·lació, un mètode amb segles d&apos;història,
+              però lent i poc eficient. Buscant com accelerar-lo vaig trobar la intensificació per
+              ultrasons (UAHD) i estudis amb cítrics on el rendiment arribava a créixer un 114%. I
+              aquí va sorgir la idea: i si, en lloc d&apos;un altre cítric, agafo una flor amb una
+              química completament diferent?
+            </p>
+            <p>
+              Així va entrar en joc la rosa — i aquí hi ha una coincidència històrica bonica: el
+              metge i filòsof persa Ibn Sina ja destil·lava rosa amb vapor al segle XI per
+              obtenir-ne l&apos;essència amb finalitats mèdiques. Sembla que és una de les primeres
+              plantes que es van destil·lar sistemàticament — un bon pont entre la part més antiga i
+              la més moderna d&apos;aquest treball.
             </p>
           </div>
         }
       >
         <p>
-          Так родился главный вопрос всей работы:{" "}
+          Així va néixer la pregunta central de tot el treball:{" "}
           <em className="text-white/90">
-            ускоряет ли акустическая кавитация — обработка ультразвуком — извлечение эфирного масла
-            быстрее и эффективнее, чем просто нагрев?
+            la cavitació acústica — el tractament amb ultrasons — accelera l&apos;extracció de
+            l&apos;oli essencial i la fa més eficient que la simple escalfor?
           </em>{" "}
-          Вопрос не философский, а измеримый — нужны те же лепестки, тот же аппарат и просто
-          секундомер с весами. Ответ ищут в соседней комнате.
+          No és una pregunta filosòfica, sinó mesurable — calen els mateixos pètals, el mateix
+          aparell i només un cronòmetre amb una balança. La resposta es busca a l&apos;habitació del
+          costat.
         </p>
       </SceneCard>
     </>
@@ -109,112 +130,120 @@ export function LabCards() {
       <SceneCard
         range={c1}
         side="left"
-        eyebrow="Часть II · Внутри лаборатории"
-        title="Два стакана, одна гипотеза"
+        eyebrow="Part II · Dins del laboratori"
+        title="Dos vasos, una hipòtesi"
         detail={
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <p className="font-mono text-[11px] uppercase" style={{ color: "var(--color-accent)" }}>
-                Условие A · Контроль
+                Condició A · Control
               </p>
               <p className="mt-1">
-                Классическая гидродистилляция в аппарате Клевенджера: нагрев до кипения, замер объёма
-                масла в градуированной ловушке каждые 15 минут до стабилизации.
+                Hidrodestil·lació convencional amb aparell de Clevenger: escalfor fins a ebullició,
+                lectura del volum d&apos;oli a la trampa graduada cada 15 minuts fins a
+                l&apos;estabilització.
               </p>
             </div>
             <div>
               <p className="font-mono text-[11px] uppercase" style={{ color: "var(--color-accent)" }}>
-                Условие B · UAHD
+                Condició B · UAHD
               </p>
               <p className="mt-1">
-                Предобработка ультразвуком (35–60 Вт, ~40 кГц, время подбирается экспериментально),
-                затем та же дистилляция в том же аппарате.
+                Pretractament amb ultrasons (35–60 W, ~40 kHz, temps a determinar
+                experimentalment), seguit de la mateixa destil·lació al mateix aparell.
               </p>
             </div>
           </div>
         }
       >
         <p>
-          Эксперимент устроен как честное сравнение: два одинаковых стакана, один и тот же цветок,
-          один и тот же нагрев до кипения. Разница только в одном шаге — во втором случае сырьё
-          сначала проводит время в ультразвуковой ванне. Если выход масла отличается — дело именно в
-          звуке, а не в случайности.
+          L&apos;experiment és una comparació honesta: dos vasos idèntics, els mateixos pètals de
+          rosa, la mateixa escalfor fins a ebullició. L&apos;única diferència és un pas: en el segon
+          cas, el material passa primer per un bany d&apos;ultrasons. Si el rendiment és diferent,
+          la causa és el so, no l&apos;atzar.
         </p>
       </SceneCard>
 
       <SceneCard
         range={c2}
         side="right"
-        eyebrow="Ориентир"
-        title="Не миф"
+        eyebrow="Referent"
+        title="No és un mite"
         hook="+114%"
         detail={
           <div className="space-y-3">
             <p>
               <SourceTag
                 citation="Cadena-Cadena et al. (2025)"
-                detail="BioTech (Basel) 14(3):59. Ультразвук (750 Вт, 40% амплитуда, 20 мин) перед гидродистилляцией: выход 1.5±0.49% против 0.7±0.03% без него на кожуре грейпфрута."
+                detail="BioTech (Basel) 14(3):59. Ultrasons (750 W, 40% d'amplitud, 20 min) abans de la hidrodestil·lació: rendiment de l'1,5±0,49% davant del 0,7±0,03% sense, en pell de raïm aranja."
               >
                 Cadena-Cadena et al., 2025
               </SourceTag>{" "}
-              — ультразвуковая предобработка перед гидродистилляцией дала рост выхода на 114% на
-              кожуре грейпфрута. Протокол чёткий и воспроизводимый — главный ориентир для дизайна
-              этого эксперимента.
+              — el pretractament amb ultrasons abans de la hidrodestil·lació va donar un augment de
+              rendiment del 114% en pell de raïm aranja. Protocol clar i reproduïble — el referent
+              principal per al disseny d&apos;aquest experiment.
             </p>
-            <p className="font-mono text-[11px]">Rendiment (%) = m(масла) / m(лепестков) × 100</p>
+            <p className="font-mono text-[11px]">Rendiment (%) = m(oli) / m(pètals) × 100</p>
             <p>
-              Минимум 3 независимых повторения на каждое условие — этого достаточно, чтобы посчитать
-              среднее значение и стандартное отклонение (s = √[Σ(xᵢ−x̄)²/(n−1)]), и построить график
-              с погрешностями. При наличии времени — тест Стьюдента для проверки статистической
-              значимости разницы между методами.
+              Un article de 2025 de tema semblant (Singh, Wikaputri, Bhoi et al.) va aplicar
+              ultrasons a pètals de rosa — però per a extracció amb dissolvent (etanol), no
+              hidrodestil·lació amb aigua com aquí. Article d&apos;accés restringit, trobat per
+              cerca web, no confirmat del tot. Per això la comparació «hidrodestil·lació versus
+              UAHD amb aigua, sobre rosa» sembla, de moment, un camí encara no explorat.
+            </p>
+            <p>
+              Mínim 3 repeticions independents per condició — prou per calcular la mitjana i la
+              desviació estàndard (s = √[Σ(xᵢ−x̄)²/(n−1)]), i traçar un gràfic amb barres
+              d&apos;error. Si hi ha temps, test t de Student per comprovar la significació
+              estadística de la diferència entre mètodes.
             </p>
           </div>
         }
       >
         <p>
-          Именно на столько выросло количество извлечённого масла в одном из проверенных научных
-          экспериментов, где ультразвук применили перед дистилляцией. Звучит как трюк, но
-          объясняется обычной физикой: звуковые волны создают в жидкости микроскопические
-          пузырьки — никакой магии. Цифра не рекламная, а измеренная — и эта работа пытается
-          повторить её на своём материале.
+          Aquest és el rendiment que va créixer — però en pell de raïm aranja, amb limonè, no en
+          pètals de rosa amb els alcohols citronel·lol i geraniol. No s&apos;ha trobat cap estudi
+          similar fet específicament amb rosa i amb aigua — aquest treball intenta omplir
+          precisament aquest buit.
         </p>
       </SceneCard>
 
       <SceneCard
         range={c3}
         side="bottom"
-        eyebrow="Дальше"
-        title="Но почему это вообще работает?"
+        eyebrow="A continuació"
+        title="Però per què funciona, exactament?"
         detail={
           <div className="space-y-3">
             <div>
-              <p className="text-[11px] font-medium tracking-wide text-white/50 uppercase">Безопасность</p>
+              <p className="text-[11px] font-medium tracking-wide text-white/50 uppercase">Seguretat</p>
               <p className="mt-1">
-                Термостойкие перчатки и защитные очки на всём протяжении опыта. Аппарат Клевенджера —
-                стеклянный и хрупкий, избегать термоударов. Ультразвуковую ванну не открывать во время
-                работы. Хорошая вентиляция помещения.
+                Guants tèrmics i ulleres de protecció durant tot l&apos;experiment. L&apos;aparell
+                de Clevenger és de vidre i fràgil — evitar xocs tèrmics. No obrir el bany
+                d&apos;ultrasons en funcionament. Ventilació adequada de l&apos;espai.
               </p>
             </div>
             <div>
-              <p className="text-[11px] font-medium tracking-wide text-white/50 uppercase">Известные ограничения</p>
+              <p className="text-[11px] font-medium tracking-wide text-white/50 uppercase">Limitacions conegudes</p>
               <p className="mt-1">
-                Доступная мощность ультразвука значительно ниже лабораторных зонд-гомогенизаторов
-                (~750 Вт в источниках-ориентирах) — эффект может быть заметно слабее описанного в
-                литературе. Состав масла не анализируется — нет доступа к ГХ-МС, сравнивается только
-                количественный выход.
+                La potència d&apos;ultrasons disponible (~35–60 W) és molt inferior als
+                homogeneïtzadors de sonda de laboratori (~750 W) dels estudis de referència. La
+                composició de l&apos;oli no s&apos;analitza — sense accés a GC-MS, només es compara
+                el rendiment quantitatiu.
               </p>
             </div>
             <p className="rounded-lg border-l-4 border-amber-500 bg-white/5 p-2 text-[11px]">
-              ⚠️ Эксперимент ещё не проведён — результаты появятся на этой странице после защиты.
+              ⚠️ L&apos;experiment encara no s&apos;ha realitzat — els resultats apareixeran en
+              aquesta pàgina després de la defensa.
             </p>
           </div>
         }
       >
         <p>
-          На бумаге всё продумано: протокол, повторения, формула расчёта выхода, техника
-          безопасности на случай, если хрупкий стеклянный аппарат не выдержит нагрева. Но чтобы
-          понять, почему звук вообще способен разрушить растительную клетку, нужно спуститься туда,
-          куда глаз не видит — на уровень одной молекулы.
+          Sobre el paper tot està pensat: protocol, repeticions, fórmula de rendiment, seguretat
+          per si l&apos;aparell de vidre no aguanta l&apos;escalfor. Però per entendre per què el so
+          és capaç de trencar una cèl·lula vegetal, cal baixar on l&apos;ull no hi arriba — al
+          nivell d&apos;una sola molècula.
         </p>
       </SceneCard>
     </>
@@ -228,24 +257,25 @@ export function MoleculeCards() {
       <SceneCard
         range={c1}
         side="left"
-        eyebrow="Часть III · На молекулярном уровне"
-        title="Нос умнее, чем кажется"
-        hook="~390 генов"
+        eyebrow="Part III · A nivell molecular"
+        title="El nas és més llest del que sembla"
+        hook="~390 gens"
         detail={
           <p>
-            Обонятельные рецепторы кодируются целым семейством генов — около 388–390 функциональных
-            генов у человека из почти тысячи в семействе (остальные — псевдогены). Молекула запаха
-            связывается с рецептором, запуская сигнал, который мозг распознаёт как конкретный аромат.{" "}
+            Els receptors olfactius estan codificats per tota una família de gens — uns 388–390
+            gens funcionals en humans, d&apos;un miler que hi ha a la família (la resta són
+            pseudogens). La molècula de l&apos;olor s&apos;uneix al receptor i dispara un senyal que
+            el cervell interpreta com una aroma concreta.{" "}
             <SourceTag
               citation="Buck, L.M.; Axel, R. (1991)"
-              detail="Cell 65(1):175–187. Открытие семейства генов обонятельных рецепторов — Нобелевская премия по физиологии и медицине 2004 года."
+              detail="Cell 65(1):175–187. Descobriment de la família de gens dels receptors olfactius — Premi Nobel de Fisiologia o Medicina 2004."
             >
-              Buck & Axel, 1991
+              Buck &amp; Axel, 1991
             </SourceTag>{" "}
             ·{" "}
             <SourceTag
               citation="Malnic, B.; Godfrey, P.A.; Buck, L.B. (2004)"
-              detail="PNAS 101(8):2584–2589. Точное число функциональных генов обонятельных рецепторов у человека."
+              detail="PNAS 101(8):2584–2589. Nombre exacte de gens funcionals de receptors olfactius en humans."
             >
               Malnic et al., 2004
             </SourceTag>
@@ -253,39 +283,40 @@ export function MoleculeCards() {
         }
       >
         <p>
-          Около 390 разных генов в человеческом теле отвечают только за одно — распознавание
-          запахов. Это одно из самых больших генных семейств, какие вообще существуют у человека —
-          больше, чем на зрение или слух. Каждый ген настроен на свою узкую группу молекул, а мозг
-          складывает сигналы от всех них в один узнаваемый запах.
+          Uns 390 gens diferents del cos humà s&apos;ocupen només d&apos;una cosa: reconèixer
+          olors. És una de les famílies gèniques més grans que existeixen en humans — més gran que
+          la de la vista o l&apos;oïda. Cada gen respon a un grup concret de molècules, i el cervell
+          combina els senyals de tots per formar una olor reconeixible.
         </p>
       </SceneCard>
 
       <SceneCard
         range={c2}
         side="right"
-        eyebrow="Механизм"
-        title="Взрыв внутри пузырька"
+        eyebrow="El mecanisme"
+        title="Una explosió dins la bombolla"
         detail={
           <div className="space-y-3">
             <p>
-              Терпены — строительные блоки большинства ароматических молекул — растение синтезирует по
-              двум параллельным путям (мевалонатному, MVA, и метилэритритолфосфатному, MEP), которые
-              работают совместно именно в тканях цветка, а не только в цитрусовых, как считалось
-              раньше.{" "}
+              Els terpens — les peces bàsiques de la majoria de molècules aromàtiques — la planta
+              els sintetitza per dues vies paral·leles (la del mevalonat, MVA, i la del
+              metileritritol fosfat, MEP), que treballen juntes precisament als teixits de la
+              flor, i no només als cítrics com es pensava abans.{" "}
               <SourceTag
                 citation="Dudareva, N. et al. (2005)"
-                detail="PNAS 102(3):933–938. MVA/MEP пути биосинтеза терпенов работают совместно в цветочной ткани львиного зева."
+                detail="PNAS 102(3):933–938. Les vies MVA/MEP de biosíntesi de terpens treballen juntes al teixit floral del boca de dragó."
               >
                 Dudareva et al., 2005
               </SourceTag>
             </p>
             <p>
-              Ультразвук создаёт микропузырьки, которые растут у поверхности клетки и схлопываются при
-              высокой амплитуде — разрывая клеточную стенку и облегчая выход эфирного масла наружу
-              через ускоренный массообмен, причём в более мягких условиях, чем при обычном нагреве.{" "}
+              Els ultrasons creen microbombolles que creixen a la superfície de la cèl·lula i
+              col·lapsen a alta amplitud — trencant la paret cel·lular i facilitant la sortida de
+              l&apos;oli essencial mitjançant un transport de massa accelerat, en condicions més
+              suaus que amb l&apos;escalfor convencional.{" "}
               <SourceTag
                 citation="Thilakarathna, R.C.N. et al. (2022)"
-                detail="J Food Sci Technol 60(4):1222–1236. Обзорная статья: механизм акустической кавитации (20–40 кГц) при экстракции масел."
+                detail="J Food Sci Technol 60(4):1222–1236. Article de revisió: mecanisme de la cavitació acústica (20–40 kHz) en l'extracció d'olis."
               >
                 Thilakarathna et al., 2022
               </SourceTag>
@@ -294,34 +325,36 @@ export function MoleculeCards() {
         }
       >
         <p>
-          Сам аромат растение производит по двум независимым химическим путям, которые сходятся
-          именно в тканях цветка — открытие, перевернувшее более раннее предположение, что так
-          работает только у цитрусовых. А ускоряет его выход вот что: ультразвук создаёт в жидкости
-          микроскопические пузырьки, которые растут и с силой схлопываются у поверхности клетки —
-          её стенка не выдерживает, и молекулы аромата выходят наружу быстрее, чем при обычном
-          нагреве.
+          La pròpia planta produeix l&apos;aroma per dues vies químiques independents que
+          conflueixen precisament als teixits de la flor — una troballa que va capgirar la idea que
+          això només passava als cítrics. I això n&apos;accelera la sortida: els ultrasons creen al
+          líquid bombolles microscòpiques que creixen i col·lapsen amb força a la superfície de la
+          cèl·lula — la paret no ho resisteix, i les molècules de l&apos;aroma surten més ràpid que
+          amb l&apos;escalfor normal.
         </p>
       </SceneCard>
 
       <SceneCard
         range={c3}
         side="bottom"
-        eyebrow="Честность"
-        title="Осталось проверить на практике"
+        eyebrow="Honestedat"
+        title="Falta comprovar-ho a la pràctica"
         detail={
           <p>
-            Часть цифр из смежных источников (например, заявленный рост «в 2514 раз» у Abdel Samad et
-            al., 2023) в самом TDR помечена как непроверенная напрямую по первоисточнику — здесь и в
-            тексте работы приводятся только данные, которые подтверждены и воспроизводимы.
+            Una part de les xifres de fonts properes (per exemple, l&apos;augment declarat «de 2514
+            vegades» a Abdel Samad et al., 2023) està marcada al mateix TDR com no verificada
+            directament per la font original — aquí i al text del treball només s&apos;aporten
+            dades confirmades i reproduïbles.
           </p>
         }
       >
         <p>
-          Важно: часть громких цифр из смежных источников (вроде «в 2514 раз быстрее») в эту работу
-          сознательно не попала — они не проверены по первоисточнику. Здесь используются только
-          подтверждённые и воспроизводимые данные, даже если они не так эффектно звучат. Всё, что
-          было до этой сцены, — теория и план. Дальше — реальный эксперимент: весы, секундомер и
-          собственные измерения.
+          Important: una part de les xifres més cridaneres de fonts properes (com el suposat
+          augment «de 2514 vegades») no s&apos;ha inclòs conscientment en aquest treball — no estan
+          verificades per la font original. Aquí només s&apos;utilitzen dades confirmades i
+          reproduïbles, encara que sonin menys espectaculars. Tot el que hi ha hagut fins ara és
+          teoria i pla. A partir d&apos;ara, l&apos;experiment real: balança, cronòmetre i mesures
+          pròpies.
         </p>
       </SceneCard>
     </>

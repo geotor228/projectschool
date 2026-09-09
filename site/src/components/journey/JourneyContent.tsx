@@ -8,17 +8,17 @@ export function HeroContent() {
         Treball de Recerca · Batxillerat
       </p>
       <h1 className="mt-6 text-3xl leading-tight font-semibold sm:text-5xl">
-        Química de les aromes и её извлечение методом дистилляции
+        Química de les aromes i la seva extracció: comparació de mètodes de destil·lació
       </h1>
       <p className="mt-6 max-w-xl text-sm text-white/70 sm:text-base">
-        Сравнение классической гидродистилляции и ультразвуковой интенсификации (UAHD) на примере
-        извлечения эфирного масла из лепестков цветка.
+        Comparació de la hidrodestil·lació convencional i la intensificació per ultrasons (UAHD),
+        aplicada a l&apos;extracció d&apos;oli essencial de pètals de rosa.
       </p>
       <p className="mt-6 font-mono text-xs text-white/60">
-        Georgijs Topolevs · Immaculada Concepció, Lloret de Mar · тьютор Raquel Arévalo
+        Georgijs Topolevs · Immaculada Concepció, Lloret de Mar · tutora Raquel Arévalo
       </p>
       <p className="mt-10 font-mono text-xs tracking-widest text-white/50 uppercase">
-        Скролль — путешествие начинается
+        Desplaça&apos;t — comença el viatge
       </p>
     </div>
   );
@@ -27,26 +27,28 @@ export function HeroContent() {
 export function ClosingContent() {
   return (
     <div className={`${card} max-w-xl text-center text-white`}>
-      <p className="font-mono text-xs tracking-widest text-white/60 uppercase">Где мы сейчас</p>
-      <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">Работа продолжается</h2>
+      <p className="font-mono text-xs tracking-widest text-white/60 uppercase">On som ara</p>
+      <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">La feina continua</h2>
       <div className="mt-6 space-y-3 text-left text-sm text-white/70">
         <p>
-          <span className="font-mono text-xs text-white/50">13 сент. 2026</span> — черновик TDR
+          <span className="font-mono text-xs text-white/50">13 de setembre de 2026</span> — primer
+          esborrany del TDR
         </p>
         <p>
-          <span className="font-mono text-xs text-white/50">Сейчас</span> — заказан аппарат
-          Клевенджера, куплен источник нагрева, весы и ультразвук уже есть
+          <span className="font-mono text-xs text-white/50">Ara</span> — aparell de Clevenger
+          encarregat, font de calor comprada; la balança i el bany d&apos;ultrasons ja hi són
         </p>
         <p>
-          <span className="font-mono text-xs text-white/50">Ближайшие недели</span> — проведение
-          эксперимента EXP-01 (мин. 3 повторения на условие)
+          <span className="font-mono text-xs text-white/50">Properes setmanes</span> — realització
+          de l&apos;experiment EXP-01 (mín. 3 repeticions per condició)
         </p>
         <p>
-          <span className="font-mono text-xs text-white/50">Середина окт. 2026</span> — финальная
-          версия TDR с реальными данными
+          <span className="font-mono text-xs text-white/50">Mitjans d&apos;octubre de 2026</span> —
+          versió final del TDR amb dades reals
         </p>
         <p>
-          <span className="font-mono text-xs text-white/50">Защита</span> — дата уточняется
+          <span className="font-mono text-xs text-white/50">Defensa oral</span> — data pendent de
+          confirmar
         </p>
       </div>
       <p className="mt-8 font-mono text-xs text-white/40">

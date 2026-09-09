@@ -17,12 +17,12 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "Química de les aromes — Georgijs Topolevs",
   description:
-    "Интерактивная презентация исследовательского проекта: сравнение классической гидродистилляции и UAHD для извлечения эфирных масел.",
+    "Presentació interactiva d'un treball de recerca: comparació de la hidrodestil·lació convencional i la UAHD per a l'extracció d'olis essencials.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ru" className={`${cormorant.variable} ${montserrat.variable} h-full`}>
+    <html lang="ca" className={`${cormorant.variable} ${montserrat.variable} h-full`}>
       <body className="min-h-full antialiased">{children}</body>
     </html>
   );

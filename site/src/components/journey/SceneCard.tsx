@@ -17,7 +17,7 @@ const POSITION_CLASS: Record<Side, string> = {
  * One of the three museum-plaque cards a "room" scene shows in place of the old single long
  * chapter block: a short eyebrow + title + one-line teaser, an optional bold headline fact (the
  * plaque's hook), and — for the cards that carry it — the full original academic detail (formulas,
- * exact figures, cited sources) behind a "Подробнее" expand, so nothing from the TDR itself is lost,
+ * exact figures, cited sources) behind a "Més informació" expand, so nothing from the TDR itself is lost,
  * it just isn't what a first-time visitor reads by default.
  *
  * `range` is this card's own slice of progress: one narrow tour-stop slot out of the room's 6 (see
@@ -98,7 +98,7 @@ export default function SceneCard({
               onClick={() => setExpanded((v) => !v)}
               className="pointer-events-auto mt-4 cursor-pointer font-mono text-xs tracking-widest text-white/50 uppercase underline underline-offset-4 hover:text-white/80"
             >
-              {expanded ? "Свернуть" : "Подробнее"}
+              {expanded ? "Amaga" : "Més informació"}
             </button>
             {expanded && (
               <div className="pointer-events-auto mt-3 max-h-[42vh] overflow-y-auto border-t border-white/10 pt-3 text-xs leading-relaxed text-white/70">

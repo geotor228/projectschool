@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { CHAPTERS, subscribeJourney } from "@/lib/journeyState";
 
 const ITEMS: { key: keyof typeof CHAPTERS; label: string }[] = [
-  { key: "hero", label: "Начало" },
-  { key: "motivation", label: "Мотивация" },
-  { key: "methodology", label: "Методология" },
-  { key: "academic", label: "Академическая база" },
-  { key: "closing", label: "Статус" },
+  { key: "hero", label: "Inici" },
+  { key: "motivation", label: "Motivació" },
+  { key: "methodology", label: "Metodologia" },
+  { key: "academic", label: "Base acadèmica" },
+  { key: "closing", label: "Estat" },
 ];
 
 export default function JourneyNav() {
@@ -57,7 +57,7 @@ export default function JourneyNav() {
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-label={open ? "Закрыть меню" : "Открыть меню разделов"}
+        aria-label={open ? "Tanca el menú" : "Obre el menú de seccions"}
         className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border backdrop-blur-md transition-colors"
         style={{
           borderColor: "var(--color-border)",
@@ -65,7 +65,7 @@ export default function JourneyNav() {
           color: "var(--color-foreground)",
         }}
       >
-        <span className="sr-only">Меню разделов</span>
+        <span className="sr-only">Menú de seccions</span>
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
           {open ? (
             <path d="M4 4L14 14M14 4L4 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
