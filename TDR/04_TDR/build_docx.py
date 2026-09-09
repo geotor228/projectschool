@@ -9,6 +9,7 @@ from pathlib import Path
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
@@ -63,6 +64,30 @@ def add_hyperlink(paragraph, url: str, text: str) -> None:
     run.append(text_el)
     link.append(run)
     paragraph._p.append(link)
+
+
+def add_toc(document) -> None:
+    """Настоящее поле оглавления: Word и Google Документы заполняют его сами."""
+    # Заголовок оглавления намеренно не Heading: иначе оглавление попадает само в себя
+    title = document.add_paragraph()
+    title_run = title.add_run("Índex")
+    title_run.bold = True
+    title_run.font.size = Pt(16)
+    paragraph = document.add_paragraph()
+    run = paragraph.add_run()
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+    instruction = OxmlElement("w:instrText")
+    instruction.set(qn("xml:space"), "preserve")
+    instruction.text = r'TOC \o "1-3" \h \z \u'
+    separate = OxmlElement("w:fldChar")
+    separate.set(qn("w:fldCharType"), "separate")
+    placeholder = OxmlElement("w:t")
+    placeholder.text = "Índex (actualitza el camp per veure les pàgines)"
+    end = OxmlElement("w:fldChar")
+    end.set(qn("w:fldCharType"), "end")
+    for element in (begin, instruction, separate, placeholder, end):
+        run._r.append(element)
 
 
 def add_caption(document, caption: str, source: str) -> None:
@@ -123,6 +148,9 @@ def build(source: Path, target: Path) -> None:
         paragraph = document.add_paragraph()
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         paragraph.add_run(line).font.size = Pt(12)
+    document.add_page_break()
+
+    add_toc(document)
     document.add_page_break()
 
     lines = source.read_text(encoding="utf-8").splitlines()

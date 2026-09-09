@@ -110,7 +110,7 @@ No qualsevol molècula pot ser detectada com a olor. Cal que compleixi unes quan
 
 ### 3.6 Quan la forma ho és tot: el cas del limonè
 
-Un dels exemples que més em va cridar l'atenció mentre investigava és el del limonè. El limonè té dos "enantiòmers", dues formes que són com la mà dreta i l'esquerra: l'una fa olor de taronja i l'altra de llimona, tot i tenir exactament la mateixa fórmula i el mateix pes molecular. Això passa perquè els receptors olfactius, com qualsevol proteïna, poden distingir entre aquestes dues formes, igual que una mà dreta només encaixa bé amb un guant dret. Aquest exemple diu molt: el nostre nas no reacciona només a de quins àtoms està feta una molècula, sinó també a la seva forma exacta en l'espai.
+El limonè en dona un bon exemple. Té dos "enantiòmers", dues formes que es relacionen com la mà dreta i l'esquerra: una fa olor de taronja i l'altra de llimona, tot i tenir la mateixa fórmula i el mateix pes molecular. Això passa perquè els receptors olfactius, com qualsevol proteïna, poden distingir entre aquestes dues formes, igual que una mà dreta només encaixa bé amb un guant dret. Aquest exemple diu molt: el nostre nas no reacciona només a de quins àtoms està feta una molècula, sinó també a la seva forma exacta en l'espai.
 
 ### 3.7 I el cervell, també hi diu la seva
 
@@ -177,7 +177,7 @@ Al principi es pensava que cada via feia un tipus de terpè diferent, però semb
 
 Els olis essencials són mescles de terpens i derivats que la planta sintetitza i emmagatzema en estructures especialitzades: glàndules a la pell dels cítrics, tricomes a fulles com les de la menta o el romaní, o cèl·lules secretores als pètals de moltes flors.
 
-I aquí hi ha una cosa que trobo interessant: aquests compostos no es fan per casualitat. Sovint tenen una funció ecològica real per a la planta, atraure pol·linitzadors, allunyar herbívors, o defensar-se de microorganismes. L'aroma que percebem els humans és, en certa manera, un efecte secundari d'aquesta funció biològica.
+Aquests compostos no es fan per casualitat: sovint tenen una funció ecològica per a la planta, com atraure pol·linitzadors o allunyar herbívors. L'aroma que percebem els humans és, en certa manera, un efecte secundari d'aquesta funció.
 
 ### 5.5 El cas dels cítrics
 
@@ -377,7 +377,7 @@ L'oli que obtingui (convencional o per UAHD) es podria fer servir directament co
 | Independent | Mètode d'extracció (convencional / UAHD) |
 | Dependent (principal) | Rendiment (%) = m(oli) / m(pètals frescos) x 100 |
 | Dependent (secundària) | Temps (min) fins a l'estabilització |
-| Controlada | Espècie i part de la planta, massa inicial, volum d'aigua, mida dels pètals, temperatura de destil·lació, **temperatura i durada del pretractament en aigua (igual a les dues condicions)**, procedència i edat del material |
+| Controlada | Espècie i part de la planta, massa inicial, volum d'aigua, mida dels pètals, temperatura de destil·lació, temperatura i durada del pretractament en aigua (igual a les dues condicions), procedència i edat del material |
 | Específica UAHD | Potència del bany (110 W, fixa), freqüència de l'equip, temps de sonicació (30 min) |
 | Control positiu | Un assaig de cada condició amb pell de cítric, per comprovar que el muntatge detecta l'efecte |
 
@@ -405,33 +405,33 @@ Abans de res he hagut de fer un càlcul que canvia tota la logística de l'exper
 
 La trampa graduada d'un Clevenger per a olis lleugers es llegeix en divisions de 0,01 mL. Amb 200 g de pètals estaria llegint entre 4 i 10 divisions: una gota que quedi enganxada al vidre o un error de lectura ja es menjaria bona part de la diferència entre els dos mètodes, i el resultat no voldria dir res. Amb 500 g o 1 kg per assaig llegeixo entre 10 i 50 divisions, i llavors sí que una diferència del tipus de la que descriu Cadena-Cadena (aproximadament el doble) seria visible per damunt de l'error de mesura.
 
-Per tant fixo el mínim en **500 g de pètals frescos per assaig**. Com que són 3 repeticions per cada una de les dues condicions, necessito entre 3 i 6 kg de pètals en total. Comprar-los com a flor de tall seria inviable per preu; els demanaré a la floristeria com a residu, pètals de flors que ja no es poden vendre, cosa que a més encaixa amb la idea de valorització de residus que apareix a la literatura sobre extracció d'oli de rosa.
+Per tant fixo el mínim en 500 g de pètals frescos per assaig. Com que són 3 repeticions per cada una de les dues condicions, necessito entre 3 i 6 kg de pètals en total. Comprar-los com a flor de tall seria inviable per preu; els demanaré a la floristeria com a residu, pètals de flors que ja no es poden vendre, cosa que a més encaixa amb la idea de valorització de residus que apareix a la literatura sobre extracció d'oli de rosa.
 
-Aquesta és, honestament, la limitació més gran del disseny després de la potència de l'equip: si al final no aconsegueixo prou quantitat de pètals, el que puc mesurar deixa de ser el rendiment i passa a ser només el temps fins a les primeres gotes.
+Després de la potència de l'equip, aquesta és la limitació més gran del disseny: si no aconsegueixo prou pètals, ja no puc mesurar el rendiment i em quedo només amb el temps fins a les primeres gotes.
 
-**Sobre la varietat.** Encara no tinc confirmat quin tipus de rosa podré fer servir. La referència de la literatura és *Rosa damascena*, que és la rosa d'oli per excel·lència, però el més probable és que una floristeria em pugui donar roses de tall comercials (híbrids de te, *Rosa × hybrida*), que donen menys oli i amb una composició diferent. Si acaba sent així ho diré explícitament al treball i no ho presentaré com si fos *Rosa damascena*: el mètode de comparació segueix sent vàlid igualment, perquè comparo dos mètodes sobre el mateix material, però el rendiment absolut no serà comparable amb el de la bibliografia.
+Encara no tinc confirmat quin tipus de rosa podré fer servir. La referència de la literatura és *Rosa damascena*, que és la rosa d'oli per excel·lència, però el més probable és que una floristeria em pugui donar roses de tall comercials (híbrids de te, *Rosa × hybrida*), que donen menys oli i amb una composició diferent. Si acaba sent així ho diré explícitament al treball i no ho presentaré com si fos *Rosa damascena*: el mètode de comparació segueix sent vàlid igualment, perquè comparo dos mètodes sobre el mateix material, però el rendiment absolut no serà comparable amb el de la bibliografia.
 
 ### 10.3 Com ho pensava fer
 
 **Condició A (control):**
 1. Peso una massa fixa de pètals i els poso en el volum d'aigua de treball.
-2. **Els deixo en repòs 30 minuts a la mateixa temperatura que assoleix el bany d'ultrasons** (mesurada amb termòmetre), sense encendre els ultrasons.
+2. Els deixo en repòs 30 minuts a la mateixa temperatura que assoleix el bany d'ultrasons (mesurada amb termòmetre), sense encendre els ultrasons.
 3. Passo la mescla al matràs del Clevenger, escalfo fins a ebullició i mantinc la temperatura constant.
 4. Vaig llegint el volum d'oli a la trampa cada 15 minuts, fins que deixa d'augmentar en dues lectures seguides.
 5. Anoto el temps total i el volum final.
 
 **Condició B (UAHD):**
 1. Peso la mateixa massa fixa de pètals.
-2. **Els sonico 30 minuts** en el mateix volum d'aigua, amb el bany de 110 W.
+2. Els sonico 30 minuts en el mateix volum d'aigua, amb el bany de 110 W.
 3. Passo la mescla al mateix aparell de Clevenger i continuo igual que a la condició A.
 
-**Per què el pas 2 de la condició A.** Un bany d'ultrasons no només vibra: també escalfa l'aigua, i en mitja hora pot pujar fins als 40-50 °C. Si la condició A comencés amb els pètals en aigua freda, no estaria comparant «amb ultrasons» contra «sense ultrasons», sinó «ultrasons més escalfament previ» contra «res». Per això el control fa la mateixa espera a la mateixa temperatura, i la temperatura del bany s'anota a cada assaig com una variable controlada més.
+Un bany d'ultrasons no només vibra: també escalfa l'aigua, i en mitja hora pot pujar fins als 40-50 °C. Si la condició A comencés amb els pètals en aigua freda, no estaria comparant «amb ultrasons» contra «sense ultrasons», sinó «ultrasons més escalfament previ» contra «res». Per això el control fa la mateixa espera a la mateixa temperatura, i la temperatura del bany s'anota a cada assaig com una variable controlada més.
 
-**Per què 30 minuts.** Cadena-Cadena et al. van sonicar 20 minuts amb una sonda de 750 W. El meu bany és de 110 W i, a més, reparteix l'energia per tot el volum en comptes de concentrar-la, de manera que l'energia que arriba al material és clarament menor. Alargar la sonicació fins a 30 minuts és la manera més senzilla de compensar-ho en part sense escalfar l'aigua més del compte. És una elecció argumentada, no òptima: amb més temps i material, el següent pas natural seria provar diversos temps de sonicació i veure a partir de quin deixa de millorar.
+Cadena-Cadena et al. van sonicar 20 minuts amb una sonda de 750 W. El meu bany és de 110 W i, a més, reparteix l'energia per tot el volum en comptes de concentrar-la, de manera que l'energia que arriba al material és clarament menor. Alargar la sonicació fins a 30 minuts és la manera més senzilla de compensar-ho en part sense escalfar l'aigua més del compte. És una elecció argumentada, no òptima: amb més temps i material, el següent pas natural seria provar diversos temps de sonicació i veure a partir de quin deixa de millorar.
 
-**Ordre dels assaigs.** Faré les repeticions alternades (A, B, A, B, A, B) i no totes les d'una condició seguides. Si les fes seguides, l'efecte del mètode quedaria barrejat amb l'envelliment dels pètals: el material del tercer dia no és el mateix que el del primer.
+Faré les repeticions alternades (A, B, A, B, A, B) i no totes les d'una condició seguides. Si les fes seguides, l'efecte del mètode quedaria barrejat amb l'envelliment dels pètals: el material del tercer dia no és el mateix que el del primer.
 
-**Material i conservació.** Els 3-6 kg de pètals no arribaran el mateix dia. Cada assaig fa servir pètals de la mateixa procedència i amb el mateix tractament previ: processats el mateix dia que arriben o, si no pot ser, conservats en fred exactament el mateix temps per a totes dues condicions. Anoto la data de recepció i la de l'assaig per a cada repetició.
+Els 3-6 kg de pètals no arribaran el mateix dia. Cada assaig fa servir pètals de la mateixa procedència i amb el mateix tractament previ: processats el mateix dia que arriben o, si no pot ser, conservats en fred exactament el mateix temps per a totes dues condicions. Anoto la data de recepció i la de l'assaig per a cada repetició.
 
 Repetiré cada condició com a mínim 3 vegades, amb mostres independents, per poder calcular mitjana i desviació estàndard.
 
@@ -509,7 +509,7 @@ Si la hipòtesi es confirma, voldrà dir que la cavitació és prou general com 
 
 Com a línies de futur, m'agradaria repetir l'experiment amb un equip més potent, fer una anàlisi per GC-MS per comparar la composició exacta, i provar-ho amb altres espècies florals.
 
-Rellegint tot el que he escrit, m'adono que aquest treball m'ha canviat una mica la manera de mirar coses tan quotidianes com l'olor d'una flor o d'una taronja pelada. Abans de començar, això m'hauria semblat una qüestió purament estètica; ara hi veig una cadena sencera de fenòmens físics i químics que expliquen per què passa. Sigui quin sigui el resultat final de l'experiment, crec que això ja és, per a mi, un resultat en si mateix.
+Del que he après fins ara, el que més em servirà probablement no és cap dada, sinó haver vist com de fàcil és equivocar-se llegint un article: la xifra de les 2514 vegades semblava impressionant fins que vaig mirar d'on sortia. Quan tingui els meus propis números, els miraré amb la mateixa desconfiança.
 
 ## 12. Bibliografia
 
@@ -520,9 +520,9 @@ Rellegint tot el que he escrit, m'adono que aquest treball m'ha canviat una mica
 
 **Altres fonts consultades (no citades literalment al text, però utilitzades per informar-me):**
 
-- Malnic, B.; Godfrey, P.A.; Buck, L.B. (2004). *The human olfactory receptor gene family*. PNAS, 101(8), 2584-2589.
-- Dudareva, N. et al. (2005). *The nonmevalonate pathway supports both monoterpene and sesquiterpene formation in snapdragon flowers*. PNAS, 102(3), 933-938.
-- Thilakarathna, R.C.N. et al. (2022). *A review on application of ultrasound and ultrasound assisted technology for seed oil extraction*. Journal of Food Science and Technology, 60(4), 1222-1236.
+- Malnic, B.; Godfrey, P.A.; Buck, L.B. (2004). *The human olfactory receptor gene family*. PNAS, 101(8), 2584-2589. DOI: 10.1073/pnas.0307882100
+- Dudareva, N. et al. (2005). *The nonmevalonate pathway supports both monoterpene and sesquiterpene formation in snapdragon flowers*. PNAS, 102(3), 933-938. DOI: 10.1073/pnas.0407360102
+- Thilakarathna, R.C.N. et al. (2022). *A review on application of ultrasound and ultrasound assisted technology for seed oil extraction*. Journal of Food Science and Technology, 60(4), 1222-1236. DOI: 10.1007/s13197-022-05359-7
 - Anastas, P.T.; Warner, J.C. (1998). *Green Chemistry: Theory and Practice*. Oxford University Press.
 - PubChem, National Library of Medicine (NIH): Limonene (CID 22311/439250), Geraniol (CID 637566), Citronellol (CID 8842).
 - Abdel Samad, R.; El Darra, N.; Al Khatib, A.; Abou Chacra, H.; Jammoul, A.; Raafat, K. (2023). *Novel dual-function GC/MS aided ultrasound-assisted hydrodistillation for the valorization of Citrus sinensis by-products*. Scientific Reports, 13, 12547. DOI: 10.1038/s41598-023-38130-9. (He llegit l'article original: la xifra de «2514 vegades» hi és, però surt d'un control que va donar 0,35 μL en 6 h, molt per sota del que s'espera d'una hidrodestil·lació normal. Per això només en faig servir la conclusió qualitativa, vegeu 6.7.3.)
@@ -535,7 +535,7 @@ Rellegint tot el que he escrit, m'adono que aquest treball m'ha canviat una mica
 - Avicenna - Canon of Medicine (coberta de manuscrit). Autor: Toxicotravail. Domini públic. Wikimedia Commons.
 - Distillation by Alembic.PNG. Autor: H Padleckas. CC BY-SA 3.0 / GFDL. Wikimedia Commons.
 - Rosa damascena5.jpg. Autor: Kurt Stüber. CC BY-SA 3.0. Wikimedia Commons.
-- Hydrodistillation using the Clevenger-type apparatus. Autors: N. Sadgrove i G. Jones (2015), Agriculture, 5(1), 48-102. CC BY 4.0. Wikimedia Commons.
+- Hydrodistillation using the Clevenger-type apparatus. Autors: N. Sadgrove i G. Jones (2015), Agriculture, 5(1), 48-102, DOI: 10.3390/agriculture5010048. CC BY 4.0. Wikimedia Commons.
 - Ultrasonic cleaner copy.jpg. Autor: William Rafti. Llicència d'atribució. Wikimedia Commons.
 - Orange cross section.jpg. Autor: Elkagye. CC BY-SA 3.0. Wikimedia Commons.
 - Perfume Bottles.JPG. Autora: Angela Andriot. CC BY-SA 3.0. Wikimedia Commons.
